@@ -26,25 +26,12 @@
         /// Required method for Designer support - do not modify
         /// the contents of this method with the code editor.
         /// </summary>
-        private void InitializeComponent()
-        {
-            // 
-            // DisplayBase
-            // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
-            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(284, 261);
-            this.SizeChanged += new System.EventHandler(this.Refresh);
-            this.Name = "DisplayBase";
-            this.Text = "My Games";
-            this.ResumeLayout(true);
-        }
+
 
         #endregion
-        private System.Windows.Forms.Panel Header;
+
         private System.Windows.Forms.Panel GameList;
         private System.Windows.Forms.Panel GameInfo;
         private System.Windows.Forms.Panel Footer;
     }
 }
-
