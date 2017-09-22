@@ -17,11 +17,12 @@ namespace MyDatabase
 {
     public partial class DisplayInit : Form
     {   //connexion DB
-        MySqlConnection MyConnection;
-        MySqlConnection MyConnection2;
-        MySqlConnection MyConnection3;
-        MySqlConnection MyConnection4;
-        MySqlConnection MyConnectionHardware;
+        MySqlConnection ConnectionToGetPlatform;
+        MySqlConnection ConnectionToDisplayGames;
+        MySqlConnection ConnectionToAddNewGame;
+        MySqlConnection ConnectionForGameInfo;
+        MySqlConnection ConnectionForDLCInfo;
+        MySqlConnection ConnectionHardware;
         public string strServer;
         public string strUser;
         public string strPassword;
@@ -36,6 +37,8 @@ namespace MyDatabase
         public string strPublisher;
         public string strReleaseYear;
         public string strCover;
+        public string strDlcCover;
+        public string strCoverDLC;
         public string strCoverType;
         public string strPlatformFilter = "IS NOT NULL";
         public string strPlatformSort = "title";
@@ -45,26 +48,34 @@ namespace MyDatabase
         public bool bDLC;
         //interface
         bool bInitDone = false;
-        public PictureBox[] GameCover;
-        public PictureBox GameCoverZoom;
-        public PictureBox bigCover;
-        public PictureBox Hover;
-        public ComboBox PlatformList;
+        bool bGameWithDLC = false;
+        public PictureBox[] pbGameCover;
+        public PictureBox[] pbDlcCover;
+        public PictureBox pbGameCoverZoom;
+        public PictureBox pbGameCoverMax;
+        public PictureBox pbGameSelected;
+        public ComboBox cbPlatformList;
         public ComboBox SortList;
         public Button buttonSearch;
         public Button buttonAddNewGame;
         public TextBox NewGameTitle;
-        public Label bigCoverTitle;
-        public Label bigCoverDev;
-        public Label bigCoverPublisher;
-        public Label bigCoverYear;
-        public Label bigCoverGenre;
+        public RichTextBox bigCoverTitle;
+        public Label lbDeveloper;
+        public Label lbPublisher;
+        public Label lbYear;
+        public Label lbGenre;
+        public Label lbDLC;
         public RadioButton buttonAlphaSort;
         public RadioButton buttonNumSort;
+        public Label lbStatistics;
+        List<int> iListHardwareIndex = new List<int>();
        //var
-        int iTableSize;
+        int iGameTableSize;
+        int iDlcTableSize;
         int iNumPlatform;
-        int iNbDisplayedGames;
+        int iNbDisplayedGames = 0;
+        int iNbDisplayedDlc = 0;
+        int iNbPlatformDLC = 0;
         float fWidthLibrary;
         float fScaleFactor = 1.05f;
         float fFormWidth;
@@ -73,10 +84,21 @@ namespace MyDatabase
         int iCoverOriginalY;
         int iCoverOriginalWidth;
         int iCoverOriginalHeight;
-        int iMarginX = 12;
-        int iMarginY = 12;
-        int iSelectedCoverIndex = 0;
-        int[,] iBoxSizeArray;
+        int iSelectedCoverPosX;
+        int iSelectedCoverPosY;
+        int iSelectedCoverWidth;
+        int iSelectedCoverSize = 10; //taille du feedback de sélection
+        int iMarginX = 15; //espace entre les jaquettes
+        int iMarginY = 15; //espace entre les étagères
+        int iLeftMarginBorder; //espace entre le bord gauche de l'appli et la 1ere jaquette
+        int iMargeXPictureBoxImage; //espace entre gauche de l'image et la gauche de la picturebox
+        int iMargeYPictureBoxImage; //espace entre haut de l'image et le haut de la picturebox
+        int iCoverIndex = 0;
+        int iSelectedCoverIndex;
+        int iCoverID;
+        bool bAlreadyClick = false;
+        object[,] iHardwareArray;
+        int iHardwareSelected;
         //taille des covers
         static int iBoxArtDvdY = 183;
         static int iShelveHeight = 195;
@@ -90,10 +112,8 @@ namespace MyDatabase
             this.WindowState = FormWindowState.Maximized;
             this.Icon = new Icon("D:/Documents/GitHub/GameLibrary/MyGames/appicon.ico");
             this.Text = "My Games";
-            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.None;
             this.Width = Screen.PrimaryScreen.Bounds.Width;
-            this.MinimumSize = new Size(Screen.PrimaryScreen.Bounds.Height, Screen.PrimaryScreen.Bounds.Width / 2);
-            this.Height = Screen.PrimaryScreen.Bounds.Height;
+            this.MinimumSize = new Size(620, 500); //TODO = marge = boite largeur max + marges
             this.Resize += new System.EventHandler(this.Refresh);  
             fFormWidth = this.Width;
             
@@ -106,24 +126,24 @@ namespace MyDatabase
             strSoftwareTable = doc.Root.Element("table").Value;
             strHardwareTable = doc.Root.Element("table1").Value;
 
-            //récupération des plateformes de la DB TODO
-            MyConnection = new MySqlConnection("Server=" + strServer + ";" + "Uid=" + strUser + ";" + "Pwd=" + strPassword + ";" + "Database=" + strDatabase + ";");
-            MyConnection.Open();
-            MySqlCommand cmd2 = MyConnection.CreateCommand();
+            //connexion pour récupérer les plateformes de la DB
+            ConnectionToGetPlatform = new MySqlConnection("Server=" + strServer + ";" + "Uid=" + strUser + ";" + "Pwd=" + strPassword + ";" + "Database=" + strDatabase + ";");
+            ConnectionToGetPlatform.Open();
+            MySqlCommand cmd2 = ConnectionToGetPlatform.CreateCommand();
             cmd2.CommandText = "SELECT COUNT(*) FROM (SELECT platform, COUNT(*) FROM " + strSoftwareTable + " GROUP BY platform) AS numplatform"; //num platforms
             iNumPlatform = Convert.ToInt32(cmd2.ExecuteScalar());
             cmd2.CommandText = "SELECT platform, COUNT(*) FROM " + strSoftwareTable + " GROUP BY platform"; //platform list
             MySqlDataReader platforms = cmd2.ExecuteReader();
 
-            //Header
-            PlatformList = new ComboBox();
-            PlatformList.FlatStyle = FlatStyle.System;
-            PlatformList.DropDownStyle = ComboBoxStyle.DropDownList;
-            PlatformList.Location = new Point(0, 0);
-            PlatformList.Font = new Font("Arial Bold", 14);
+            //combo box header pour filtrer par plateforme
+            cbPlatformList = new ComboBox();
+            cbPlatformList.FlatStyle = FlatStyle.System;
+            cbPlatformList.DropDownStyle = ComboBoxStyle.DropDownList;
+            cbPlatformList.Location = new Point(0, 0);
+            cbPlatformList.Font = new Font("Arial Bold", 14);
 
             //buttonAlphaSort = new RadioButton();
-            //buttonAlphaSort.Location = new Point(PlatformList.Width, 0);
+            //buttonAlphaSort.Location = new Point(cbPlatformList.Width, 0);
             //buttonAlphaSort.Appearance = Appearance.Button;
             //buttonAlphaSort.FlatStyle = FlatStyle.Flat;
             //buttonAlphaSort.FlatAppearance.BorderSize = 0;
@@ -133,7 +153,7 @@ namespace MyDatabase
             //buttonAlphaSort.BackgroundImageLayout = ImageLayout.Zoom;
 
             //buttonNumSort = new RadioButton();
-            //buttonNumSort.Location = new Point(PlatformList.Width + buttonAlphaSort.Width, 0);
+            //buttonNumSort.Location = new Point(cbPlatformList.Width + buttonAlphaSort.Width, 0);
             //buttonNumSort.Appearance = Appearance.Button;
             //buttonNumSort.FlatStyle = FlatStyle.Flat;
             //buttonNumSort.FlatAppearance.BorderSize = 0;
@@ -164,91 +184,117 @@ namespace MyDatabase
             //buttonAddNewGame.Width = 32;
             //buttonAddNewGame.Location = new Point(buttonSearch.Location.X + buttonSearch.Width, 0);
             
-            //boucle nombre de platform + 1 pour tout afficher
+            //boucle nombre de platformes + 1 pour tout afficher
             int k = 0;
+            
             while (k < iNumPlatform + 1)
             {
                 if (k == 0)
                 {
-                    PlatformList.Items.Insert(k, "All Platforms");
+                    cbPlatformList.Items.Insert(k, "All Platforms");
                 }
                 else
                 {
                     platforms.Read();
-                    string strPlatformName = GetPlatformsList(platforms, 0);
-                    PlatformList.Items.Insert(k, strPlatformName);
+                    string strPlatformName = GetPlatformsName(platforms, 0);
+                    cbPlatformList.Items.Insert(k, strPlatformName);
                 }
                 k = k + 1;
             }
             
             platforms.Close();
-            MyConnection.Close();
-            PlatformList.SelectedIndex = 0;
-            PlatformList.SelectedIndexChanged += new System.EventHandler(PlatformList_SelectedIndexChanges);
-            PlatformList.DrawMode = DrawMode.OwnerDrawFixed;
-            PlatformList.DrawItem += new DrawItemEventHandler(PlatformList_DrawItem);
-            PlatformList.DropDownClosed += new EventHandler(PlatformList_DropDownClosed);
-            this.Controls.Add(PlatformList);
+            ConnectionToGetPlatform.Close();
+            
+            cbPlatformList.SelectedIndex = 0;
+            cbPlatformList.SelectedIndexChanged += new System.EventHandler(cbPlatformList_SelectedIndexChanges);
+            cbPlatformList.DrawMode = DrawMode.OwnerDrawFixed;
+            cbPlatformList.DrawItem += new DrawItemEventHandler(cbPlatformList_DrawItem);
+            cbPlatformList.DropDownClosed += new EventHandler(cbPlatformList_DropDownClosed);
+            this.Controls.Add(cbPlatformList);
 
-            MyConnectionHardware = new MySqlConnection("Server=" + strServer + ";" + "Uid=" + strUser + ";" + "Pwd=" + strPassword + ";" + "Database=" + strDatabase + ";");
-            MyConnectionHardware.Open();
-            MySqlCommand cmdhardware = MyConnectionHardware.CreateCommand();
-            cmdhardware.CommandText = "SELECT COUNT(*) FROM (SELECT hardware_id, COUNT(*) FROM " + strHardwareTable + " GROUP BY hardware_id) AS numplatform";
-            int iTabSize = Convert.ToInt32(cmdhardware.ExecuteScalar());
-            iBoxSizeArray = new int[iTabSize, 2];
-            MySqlDataReader fullbasehardware = cmdhardware.ExecuteReader();
+            ConnectionHardware = new MySqlConnection("Server=" + strServer + ";" + "Uid=" + strUser + ";" + "Pwd=" + strPassword + ";" + "Database=" + strDatabase + ";");
+            ConnectionHardware.Open();
+            MySqlCommand cmdHardware = ConnectionHardware.CreateCommand();
+            cmdHardware.CommandText = "SELECT COUNT(*) FROM (SELECT hardware_id, COUNT(*) FROM " + strHardwareTable + " GROUP BY hardware_id) AS numplatform";
+            int iTabSize = Convert.ToInt32(cmdHardware.ExecuteScalar());
+ iHardwareArray = new object[iTabSize, 11];
+            MySqlDataReader fullbasehardware = cmdHardware.ExecuteReader();
 
             fullbasehardware.Read();
             fullbasehardware.Close();
 
-            cmdhardware.CommandText = "SELECT * FROM " + strHardwareTable + " ORDER BY 'hardware_id'";
-            MySqlDataReader fullbasehardware2 = cmdhardware.ExecuteReader();
+            cmdHardware.CommandText = "SELECT * FROM " + strHardwareTable + " ORDER BY name";
+            MySqlDataReader fullbasehardware2 = cmdHardware.ExecuteReader();
             
             k = 0;
+            int iHardwareID;
+            string strHardwareName;
+            string strManufacturer;
+            int iReleaseDate;
             int iCoverWidth;
             int iCoverHeight;
+            int iCoverColorRed;
+            int iCoverColorGreen;
+            int iCoverColorBlue;                     
+            string strOnlineService;
+            string strMedia;
             while (fullbasehardware2.Read())
-            { 
+            {
+                iHardwareID =  GetHardwareID(fullbasehardware2);
+                strHardwareName = GetHardwareName(fullbasehardware2); ;
+                strManufacturer = GetManufacturer(fullbasehardware2);
+                iReleaseDate = GetPlatformRelease(fullbasehardware2);             
+                iCoverWidth = GetBoxeSizeX(fullbasehardware2);
+                iCoverHeight =   GetBoxeSizeY(fullbasehardware2);
+                iCoverColorRed = GetHardwareColorRed(fullbasehardware2);
+                iCoverColorGreen = GetHardwareColorGreen(fullbasehardware2);
+                iCoverColorBlue = GetHardwareColorBlue(fullbasehardware2);        
+                strOnlineService = GetOnlineService(fullbasehardware2);
+                strMedia = GetMedia(fullbasehardware2);
                 
-             iCoverWidth = GetBoxeSizeX(fullbasehardware2);
-             iCoverHeight =   GetBoxeSizeY(fullbasehardware2);
-                
-                iBoxSizeArray[k,0] = iCoverWidth;
-                iBoxSizeArray[k,1] = iCoverHeight;
-            k= k+1;
+                iHardwareArray[k, 0] = iHardwareID;
+                iHardwareArray[k, 1] = strHardwareName;
+                iHardwareArray[k, 2] = strManufacturer;
+                iHardwareArray[k, 3] = iReleaseDate;
+                iHardwareArray[k, 4] = iCoverWidth;
+                iHardwareArray[k, 5] = iCoverHeight;
+                iHardwareArray[k, 6] = iCoverColorRed;
+                iHardwareArray[k, 7] = iCoverColorGreen;
+                iHardwareArray[k, 8] = iCoverColorBlue;
+                iHardwareArray[k, 9] = strOnlineService;
+                iHardwareArray[k, 10] = strMedia;
+                iListHardwareIndex.Add(iHardwareID);
+                k = k + 1;
             }
             
             fullbasehardware2.Close();
-            MyConnectionHardware.Close();
+            ConnectionHardware.Close();
 
-            DisplayLibrary(strPlatformFilter, bInitDone);
+            //panel pour afficher des info sur l'affichage
+            plFooter = new Panel();
+            plFooter.Height = cbPlatformList.Height;
+            plFooter.BackColor = Color.Red;
+            this.Controls.Add(plFooter);
 
-
-
-            ////récupération des plateformes de la DB TODO
-            //MyConnection = new MySqlConnection("Server=" + strServer + ";" + "Uid=" + strUser + ";" + "Pwd=" + strPassword + ";" + "Database=" + strDatabase + ";");
-            //MyConnection.Open();
-            //MySqlCommand cmd2 = MyConnection.CreateCommand();
-            //cmd2.CommandText = "SELECT COUNT(*) FROM (SELECT platform, COUNT(*) FROM " + strSoftwareTable + " GROUP BY platform) AS numplatform"; //num platforms
-            //iNumPlatform = Convert.ToInt32(cmd2.ExecuteScalar());
-            //cmd2.CommandText = "SELECT platform, COUNT(*) FROM " + strSoftwareTable + " GROUP BY platform"; //platform list
-            //MySqlDataReader platforms = cmd2.ExecuteReader();
+            DisplayLibrary(strPlatformFilter, bInitDone, iCoverIndex, iCoverID);
         }
 
-        public void PlatformList_DropDownClosed(object sender, EventArgs e)
+        public void cbPlatformList_DropDownClosed(object sender, EventArgs e)
         {
             this.ActiveControl = null;
         }
 
-        public void DisplayLibrary(string strPlatformFilter, bool bInitDone)
+        public void DisplayLibrary(string strPlatformFilter, bool bInitDone, int iCoverIndex, int iCoverID)
         {
-            PlatformList.Width = (int)fFormWidth;
-            //Accès base de jeux
-            MyConnection2 = new MySqlConnection("Server=" + strServer + ";" + "Uid=" + strUser + ";" + "Pwd=" + strPassword + ";" + "Database=" + strDatabase + ";");
-            MyConnection2.Open();
-            MySqlCommand cmd = MyConnection2.CreateCommand();
+            cbPlatformList.Width = (int)fFormWidth;
+            plFooter.Width = (int)fFormWidth;
+            //accès base de jeux
+            ConnectionToDisplayGames = new MySqlConnection("Server=" + strServer + ";" + "Uid=" + strUser + ";" + "Pwd=" + strPassword + ";" + "Database=" + strDatabase + ";");
+            ConnectionToDisplayGames.Open();
+            MySqlCommand cmd = ConnectionToDisplayGames.CreateCommand();
             cmd.CommandText = "SELECT COUNT(*) FROM " + strSoftwareTable + " WHERE platform " + strPlatformFilter;
-            iTableSize = Convert.ToInt32(cmd.ExecuteScalar());
+            iGameTableSize = Convert.ToInt32(cmd.ExecuteScalar());
+            //prise en compte de la recherche ou non
             if (strbuttonSearch == "")
             {
                 cmd.CommandText = "SELECT * FROM " + strSoftwareTable + " WHERE platform " + strPlatformFilter + " ORDER BY " + strPlatformSort;
@@ -267,163 +313,452 @@ namespace MyDatabase
             MySqlDataReader fullbase = cmd.ExecuteReader();
 
             int i = 0;
-            int j = 0;
             int iGameWidth;
             int iTotalGameWidth = 0;
-            int iShelveTop;
-
+            int iShelveTop = 0;
             iNbDisplayedGames = 0;
-            
-            //Panels settings          
-            GameList = new Panel();
-            GameList.Location = new Point(0, PlatformList.Height);
-            GameList.Height = this.ClientSize.Height - PlatformList.Height;
-            GameList.VerticalScroll.Maximum = 0;
-            GameList.AutoScroll = false;
-            GameList.VerticalScroll.Visible = false;
-            GameList.AutoScroll = true;
-            //GameList.BackColor = Color.Red;
-            Controls.Add(GameList);
+            iNbPlatformDLC = 0;     
+            //panel settings -> plGameList = panel de tous les jeux de la plateforme          
+            plGameList = new Panel();
+            plGameList.Location = new Point(0, cbPlatformList.Height);
+            plGameList.VerticalScroll.Maximum = 0;
+            plGameList.HorizontalScroll.Maximum = 0;
+            plGameList.AutoScroll = false;
+            plGameList.VerticalScroll.Visible = false;
+            plGameList.AutoScroll = true;
+            plGameList.BackColor = Color.White;
+            Controls.Add(plGameList);
+            //panel settings -> plGameInfo = panel avec les infos sur jeu sélectionnée 
+            plGameInfo = new Panel();
+            plGameInfo.Width = iInfoWidth;
+            plGameInfo.Height = Screen.PrimaryScreen.Bounds.Height - cbPlatformList.Height - plFooter.Height;                  
+            plGameInfo.AutoScroll = false;
+            plGameInfo.BackColor = Color.White;  
+            Controls.Add(plGameInfo);
+            fWidthLibrary = this.ClientSize.Width - plGameInfo.Width;  
 
-            GameInfo = new Panel();
-            GameInfo.MinimumSize = new Size(iInfoWidth, Screen.PrimaryScreen.Bounds.Height / 2);
+            //placement des jaquettes dans plGameList         
+            pbGameCover = new PictureBox[iGameTableSize];
             
-            GameInfo.Width = iInfoWidth;
-            fWidthLibrary = this.Width - GameInfo.Width;
-            GameList.Width = (int)fWidthLibrary;
-            GameInfo.Location = new Point(GameList.Width, PlatformList.Height);
-            GameInfo.Height = GameList.Height;
-            GameInfo.AutoScroll = false;
-            GameInfo.BackColor = Color.Blue;
-           
-            this.Controls.Add(GameInfo);
-         
-            // Placement des jeux dans un panel           
-            GameCover = new PictureBox[iTableSize];
-            iShelveTop = 0;
-            int iLibraryRightMargin = (int)fWidthLibrary;
-            int iLibraryRightMarginTemp = 0;
             while (fullbase.Read())
             {
                 strCover = GetCover(fullbase);
                 strCoverType = GetPlatform(fullbase);
-                iDLC = GetDLC(fullbase);
+                iDLC = GetMainGame_ForDLC(fullbase);
+                int iHardwareIndex = GetPlatformIndex(fullbase);
+                iHardwareIndex = iListHardwareIndex.FindIndex(x => x==iHardwareIndex);
                 bDLC = false;
                 if (iDLC != "")
                 {
                     bDLC =true;
+                    iNbPlatformDLC = iNbPlatformDLC + 1;
                 }
-
-                GameCover[i] = new PictureBox();
-                GameCover[i].SizeMode = PictureBoxSizeMode.Zoom;
-
+                //chaque jaquette est une Picturebox
+                pbGameCover[i] = new PictureBox();
+                pbGameCover[i].SizeMode = PictureBoxSizeMode.Zoom;
                 //récupération des tailles des boîtes
-                GameCover[i].Width = iBoxSizeArray[GetPlatformIndex(fullbase)-1,0];
-                GameCover[i].Height = iBoxSizeArray[GetPlatformIndex(fullbase)-1,1];
-                
-                
-
-                //conversion des images manquantes
+                pbGameCover[i].Width = (int)iHardwareArray[iHardwareIndex, 4];
+                pbGameCover[i].Height = (int)iHardwareArray[iHardwareIndex, 5];
+                //conversion des images manquantes pour le zoom et la sélection et la jaquette par défaut -> TODO : chemins relatifs
                 if (File.Exists("D:/Documents/GitHub/GameLibrary/covers_mini/" + strCover + ".jpg"))
                 {
-                    GameCover[i].Image = Image.FromFile("D:/Documents/GitHub/GameLibrary/covers_mini/" + strCover + ".jpg");
+                    pbGameCover[i].Image = Image.FromFile("D:/Documents/GitHub/GameLibrary/covers_mini/" + strCover + ".jpg");
 
                 }
                 else if (File.Exists("D:/Documents/GitHub/GameLibrary/covers_original/" + strCover + ".jpg"))
                 {
                     var new_mini = Bitmap.FromFile("D:/Documents/GitHub/GameLibrary/covers_original/" + strCover + ".jpg");
-                    CreateImage(new_mini, GameCover[i].Width, GameCover[i].Height, strCover);
-                    GameCover[i].Image = Image.FromFile("D:/Documents/GitHub/GameLibrary/covers_mini/" + strCover + ".jpg");
+                    CreateImage(new_mini, pbGameCover[i].Width, pbGameCover[i].Height, strCover);
+                    pbGameCover[i].Image = Image.FromFile("D:/Documents/GitHub/GameLibrary/covers_mini/" + strCover + ".jpg");
                 }
                 else
                 {
-                    GameCover[i].Image = Image.FromFile("D:/Documents/GitHub/GameLibrary/covers_original/0.jpg");
+                    if (File.Exists("D:/Documents/GitHub/GameLibrary/covers_mini/0.jpg"))
+                    {
+                        pbGameCover[i].Image = Image.FromFile("D:/Documents/GitHub/GameLibrary/covers_mini/0.jpg");
+
+                    }
+                    else if (File.Exists("D:/Documents/GitHub/GameLibrary/covers_original/0.jpg"))
+                    {
+                        var new_mini = Bitmap.FromFile("D:/Documents/GitHub/GameLibrary/covers_original/0.jpg");
+                        CreateImage(new_mini, pbGameCover[i].Width, pbGameCover[i].Height, "0");
+                        pbGameCover[i].Image = Image.FromFile("D:/Documents/GitHub/GameLibrary/covers_mini/0.jpg");
+                    }                  
+                    pbGameCover[i].Image = Image.FromFile("D:/Documents/GitHub/GameLibrary/covers_original/0.jpg");
                 }
 
-                iGameWidth = GameCover[i].Size.Width;
- 
+                iGameWidth = pbGameCover[i].Size.Width;
+                int iNbGamesPerRow;
+                //calcul de la marge à gauche pour démarrer le placement des jaquettes -> valeur fixe pour "All platforms"
+                if (cbPlatformList.SelectedIndex == 0)
+                {
+                    iLeftMarginBorder = iMarginX;
+                }
+                else
+                {
+                    iNbGamesPerRow = (int)fWidthLibrary / (iGameWidth + iMarginX);
+                    iLeftMarginBorder = ((int)fWidthLibrary - (iNbGamesPerRow * (iGameWidth + iMarginX))) / 2 + iMarginX / 2;
+                }
+                //les DLC ne sont pas affichés
                 if (bDLC == false)
                 {
-                    // change shelve
-                    if (iGameWidth + iMarginX*2 > fWidthLibrary - iTotalGameWidth)
+                    //change de ligne si la prochaine jaquette n'a pas de place
+                    if (iGameWidth + iLeftMarginBorder > fWidthLibrary - iTotalGameWidth)
                     {
-                        iLibraryRightMarginTemp = (int)fWidthLibrary - iTotalGameWidth;
-                        if (iLibraryRightMarginTemp < iLibraryRightMargin && iLibraryRightMarginTemp > iMarginX)
-                        {
-                            iLibraryRightMargin = iLibraryRightMarginTemp;
-                        }
-
                         iTotalGameWidth = 0;
-                        j++;
-                        iShelveTop = iShelveHeight + iShelveTop;               
+                        iShelveTop = iShelveHeight + iShelveTop;
                     }
+                    //position 1ere jaquette de chaque ligne
                     if (iTotalGameWidth == 0)
                     {
-                       GameCover[i].Left = iMarginX;
+                        pbGameCover[i].Left = iLeftMarginBorder;
+                        iTotalGameWidth = iLeftMarginBorder;
                     }
+                    //position des jaquettes suivantes
                     else
                     {
-                        GameCover[i].Left = GameCover[i - 1].Location.X + GameCover[i - 1].Width + iMarginX;
+                        pbGameCover[i].Left = pbGameCover[i - 1].Location.X + pbGameCover[i - 1].Width + iMarginX;
                     }
+                    // picturebox settings
+                    pbGameCover[i].Top = iShelveTop + (iShelveHeight - pbGameCover[i].Height);
+                    pbGameCover[i].Name = GetCover(fullbase);
+                    pbGameCover[i].Show();
+                    pbGameCover[i].MouseEnter += new System.EventHandler(this.GameCover_Enter);
+                    pbGameCover[i].MouseLeave += new System.EventHandler(this.GameCover_Leave);
+                    //autosélection de la jaquette
+                    if (i == 0 && bHasRefresh == false)
+                    {
+                        iCoverID = GetID(fullbase);
+                    }
+                    else if (i == iSelectedCoverIndex && bHasRefresh == true)
+                    {
+                        iCoverID = Int32.Parse(pbGameCover[iSelectedCoverIndex].Name);
+                        iCoverIndex = iSelectedCoverIndex;
+                    }
+                    plGameList.Controls.Add(pbGameCover[i]);
 
+                    //mise à jour des valeurs
                     iNbDisplayedGames = iNbDisplayedGames + 1;
                     iTotalGameWidth = iTotalGameWidth + iGameWidth + iMarginX;
-
-                    GameCover[i].Top = iShelveTop + (iShelveHeight - GameCover[i].Height);
-                    GameCover[i].Name = GetCover(fullbase);
-                    GameCover[i].Show();
-
-                    GameCover[i].MouseEnter += new System.EventHandler(this.GameCover_Enter);
-                    GameCover[i].MouseLeave += new System.EventHandler(this.GameCover_Leave);
-                    GameList.Controls.Add(GameCover[i]);
-
                     i = i + 1;
                 }
             }
-            
-            if (j != 0)
+            //placement du feedback de sélection
+            pbGameSelected = new PictureBox();
+            pbGameSelected.Width = pbGameCover[iCoverIndex].Width + iSelectedCoverSize;
+            pbGameSelected.Height = pbGameCover[iCoverIndex].Height + iSelectedCoverSize;
+            pbGameSelected.Location = new Point(pbGameCover[iCoverIndex].Location.X - iSelectedCoverSize / 2, pbGameCover[iCoverIndex].Location.Y - iSelectedCoverSize / 2);            
+            //couleur du feedback de sélection dépendant de la platforme
+            if (cbPlatformList.SelectedIndex == 0)
             {
-            GameList.Location = new Point(iLibraryRightMargin / 2 - iMarginX, PlatformList.Height);
-            GameList.Width = GameList.Width - iLibraryRightMargin / 2 + iMarginX;
+                pbGameSelected.BackColor = Color.Black;
             }
+            else
+            {
+                pbGameSelected.BackColor = Color.FromArgb(255, (int)iHardwareArray[cbPlatformList.SelectedIndex - 1, 6], (int)iHardwareArray[cbPlatformList.SelectedIndex - 1, 7], (int)iHardwareArray[cbPlatformList.SelectedIndex - 1, 8]);
+            }
+            plGameList.Controls.Add(pbGameSelected);
             fullbase.Close();
-            MyConnection2.Close();
+            ConnectionToDisplayGames.Close();
+
+            lbStatistics = new Label();
+            lbStatistics.AutoSize = true;
+            if (iNbPlatformDLC == 0)
+            {
+                strDlcCover = "";
+            }
+            else
+            {
+                strDlcCover = " - DLC : " + iNbPlatformDLC;
+            }
+            if (iHardwareSelected != 0)
+            {
+                lbStatistics.Text = "Fabricant : " + iHardwareArray[iHardwareSelected - 1, 2] + " - Sortie : " + iHardwareArray[iHardwareSelected - 1, 3] + " - Support : " + iHardwareArray[iHardwareSelected - 1, 10]
+                                    + " - Services en ligne : " + iHardwareArray[iHardwareSelected - 1, 9] + " - Jeux : " + iNbDisplayedGames + strDlcCover;
+            }
+            else
+            {
+                lbStatistics.Text = "Jeux : " + iNbDisplayedGames + " - DLC : " + iNbPlatformDLC;
+            }
+            lbStatistics.Font = new Font("Ubuntu", 8, FontStyle.Regular);
+            lbStatistics.TextAlign = ContentAlignment.MiddleLeft;
+            lbStatistics.BackColor = Color.LightGoldenrodYellow;
+            lbStatistics.Dock = DockStyle.Bottom;
+            plFooter.Controls.Add(lbStatistics);
+            
+            DisplayInfo(iCoverID);
+        }
+        
+        bool bPreviousGameHasDLC = false;
+        public void DisplayInfo(int iCoverID)
+        {
+            int bigCoverId;
+            int iDlcTotalWidth = 0;
+            int i = 0;
+            //info to display when clicked
+            pbGameCoverMax = new PictureBox();
+            bigCoverTitle = new RichTextBox();
+            lbDeveloper = new Label();
+            lbPublisher = new Label();
+            lbYear = new Label();
+            lbGenre = new Label();
+            
+            ConnectionForGameInfo = new MySqlConnection("Server=" + strServer + ";" + "Uid=" + strUser + ";" + "Pwd=" + strPassword + ";" + "Database=" + strDatabase + ";");
+            ConnectionForGameInfo.Open();
+            MySqlCommand GameData = ConnectionForGameInfo.CreateCommand();
+            GameData.CommandText = "SELECT * FROM " + strSoftwareTable + " WHERE game_id = " + iCoverID;
+            MySqlDataReader gameinfo = GameData.ExecuteReader();
+            gameinfo.Read();
+            bigCoverId = GetID(gameinfo);
+            pbGameCoverMax.Width = plGameInfo.Width;
+            pbGameCoverMax.Height = 500;
+
+            if (File.Exists("D:/Documents/GitHub/GameLibrary/covers_zoom/" + iCoverID + ".jpg"))
+            {
+                pbGameCoverMax.Image = Image.FromFile("D:/Documents/GitHub/GameLibrary/covers_zoom/" + iCoverID + ".jpg");
+            }
+            else
+            {
+                pbGameCoverMax.Image = Image.FromFile("D:/Documents/GitHub/GameLibrary/covers_zoom/0.jpg");
+            }
+
+            pbGameCoverMax.SizeMode = PictureBoxSizeMode.Zoom;
+            OffsetOfImage(pbGameCoverMax);
+            pbGameCoverMax.Location = new Point(0, -iMargeYPictureBoxImage + iMarginY);
+            pbGameCoverMax.MaximumSize = new Size();
+            //pbGameCoverMax.BackColor = Color.FromArgb(0, 55, 55, 55);
+
+            bigCoverTitle.Text = GetTitle(gameinfo);
+            bigCoverTitle.Font = new Font("Ubuntu", 24, FontStyle.Bold);
+            bigCoverTitle.Location = new Point(iMargeXPictureBoxImage, pbGameCoverMax.Bottom - iMargeYPictureBoxImage + iMarginY);
+            bigCoverTitle.Width = plGameInfo.Width - iMargeXPictureBoxImage;
+            using (Graphics g = CreateGraphics())
+            {
+                bigCoverTitle.Height = (int)g.MeasureString(bigCoverTitle.Text,bigCoverTitle.Font, bigCoverTitle.Width).Height;
+            } 
+            bigCoverTitle.ScrollBars = RichTextBoxScrollBars.None; 
+            bigCoverTitle.BorderStyle = BorderStyle.None;
+            //bigCoverTitle.BackColor = Color.Aqua;
+
+            lbDeveloper.Text = "Développeur : " + GetDeveloper(gameinfo);
+            lbDeveloper.Font = new Font("Ubuntu", 12, FontStyle.Regular);
+            lbDeveloper.Location = new Point(bigCoverTitle.Left + iMarginX, bigCoverTitle.Bottom + iMarginX);
+            lbDeveloper.Width = plGameInfo.Width;
+            //lbDeveloper.BackColor = Color.Aquamarine;
+            
+            lbPublisher.Text = "Éditeur : " + GetPublisher(gameinfo);
+            lbPublisher.Font = new Font("Ubuntu", 12, FontStyle.Regular);
+            lbPublisher.Location = new Point(bigCoverTitle.Left + iMarginX, lbDeveloper.Bottom);
+            lbPublisher.Width = plGameInfo.Width;
+            //lbPublisher.BackColor = Color.Azure;
+
+            lbYear.Text = "Sortie : " + GetReleaseYear(gameinfo);
+            lbYear.Font = new Font("Ubuntu", 12, FontStyle.Regular);
+            lbYear.Location = new Point(bigCoverTitle.Left + iMarginX, lbPublisher.Bottom);
+            lbYear.Width = plGameInfo.Width;
+            //lbYear.BackColor = Color.Beige;
+
+            if (GetGenre2(gameinfo) == "")
+            {
+                lbGenre.Text = "Genre : " + GetGenre(gameinfo);
+            }
+            else
+            {
+                lbGenre.Text = "Genre : " + GetGenre(gameinfo) + "/" + GetGenre2(gameinfo);
+            }
+            lbGenre.Font = new Font("Ubuntu", 12, FontStyle.Regular);
+            lbGenre.Location = new Point(bigCoverTitle.Left + iMarginX, lbYear.Bottom);
+            lbGenre.Width = plGameInfo.Width;
+            //lbGenre.BackColor = Color.Bisque;
+    
+            if (HasDLC(gameinfo) == 1)
+            {
+                bGameWithDLC = true;
+                if (bPreviousGameHasDLC == true)
+                {
+                    plGameInfo.Controls.Remove(lbDLC);    
+                }
+                lbDLC = new Label();
+                plGameInfo.Controls.Add(lbDLC);
+                lbDLC.Text = "DLC :";
+                lbDLC.Font = new Font("Ubuntu", 12, FontStyle.Regular);
+                lbDLC.Location = new Point(bigCoverTitle.Left + iMarginX, lbGenre.Bottom);
+                lbDLC.Width = plGameInfo.Width;
+                //lbDLC.BackColor = Color.Beige;
+                bPreviousGameHasDLC = true;
+
+                plDlcInfo = new Panel();
+                plDlcInfo.Width = pbGameCoverMax.Width - iMarginX -  iMargeXPictureBoxImage * 2;
+                plDlcInfo.Height = plFooter.Top - lbDLC.Bottom - cbPlatformList.Height;
+                plDlcInfo.Location = new Point(bigCoverTitle.Left + iMarginX, lbDLC.Bottom);
+                plDlcInfo.VerticalScroll.Maximum = 0;
+                plDlcInfo.HorizontalScroll.Maximum = 0;
+                plDlcInfo.AutoScroll = false;
+                plDlcInfo.VerticalScroll.Visible = false;
+                plDlcInfo.AutoScroll = true;
+                //plDlcInfo.BackColor = Color.DarkCyan;
+            }
+            else if (HasDLC(gameinfo) == 0)
+            {
+                bGameWithDLC = false;
+                plGameInfo.Controls.Remove(lbDLC);
+                bPreviousGameHasDLC = false;         
+            }
+            ConnectionForGameInfo.Close();
+            
+            //connection pour obtenir les infos sur les DLC du jeu sélectionné
+            ConnectionForDLCInfo = new MySqlConnection("Server=" + strServer + ";" + "Uid=" + strUser + ";" + "Pwd=" + strPassword + ";" + "Database=" + strDatabase + ";");
+            ConnectionForDLCInfo.Open();
+            MySqlCommand DLCData = ConnectionForDLCInfo.CreateCommand();
+            DLCData.CommandText = "SELECT COUNT(*) FROM (SELECT game_id, COUNT(*) FROM software WHERE fkid_game = " + bigCoverId + " GROUP BY game_id) AS numplatform";
+            iDlcTableSize = Convert.ToInt32(DLCData.ExecuteScalar());
+            DLCData.CommandText = "SELECT * FROM " + strSoftwareTable + " WHERE fkid_game = " + iCoverID;
+            MySqlDataReader dlcinfo = DLCData.ExecuteReader();
+
+            //placement des covers des DLC dans un panel
+            pbDlcCover = new PictureBox[iDlcTableSize];
+            int iDlcShelveTop = 0;
+            while (dlcinfo.Read())
+            {
+                strCoverDLC = GetCover(dlcinfo);
+                int iDlcWidth;
+                int iNbDlcPerRow;
+                int iHardwareIndex = GetPlatformIndex(dlcinfo);
+                if (i == 0)
+                {
+                    iDlcShelveTop = 0;
+                    iNbDisplayedDlc = 0;
+                }
+                //chaque jaquette est une Picturebox
+                pbDlcCover[i] = new PictureBox();
+                pbDlcCover[i].SizeMode = PictureBoxSizeMode.Zoom;
+                //récupération des tailles des boîtes
+                pbDlcCover[i].Width = (int)((int)iHardwareArray[iHardwareIndex, 4] / 1.6);
+                pbDlcCover[i].Height = (int)((int)iHardwareArray[iHardwareIndex, 5] / 1.6);
+                pbDlcCover[i].Tag = GetTitle(dlcinfo);
+                //conversion des images manquantes pour le zoom et la sélection et la jaquette par défaut -> TODO : chemins relatifs
+                if (File.Exists("D:/Documents/GitHub/GameLibrary/covers_mini/" + strCoverDLC + ".jpg"))
+                {
+                    pbDlcCover[i].Image = Image.FromFile("D:/Documents/GitHub/GameLibrary/covers_mini/" + strCoverDLC + ".jpg");
+
+                }
+                else if (File.Exists("D:/Documents/GitHub/GameLibrary/covers_original/" + strCoverDLC + ".jpg"))
+                {
+                    var new_mini = Bitmap.FromFile("D:/Documents/GitHub/GameLibrary/covers_original/" + strCoverDLC + ".jpg");
+                    CreateImage(new_mini, pbDlcCover[i].Width, pbDlcCover[i].Height, strCoverDLC);
+                    pbDlcCover[i].Image = Image.FromFile("D:/Documents/GitHub/GameLibrary/covers_mini/" + strCoverDLC + ".jpg");
+                }
+                else
+                {
+                    if (File.Exists("D:/Documents/GitHub/GameLibrary/covers_mini/0.jpg"))
+                    {
+                        pbDlcCover[i].Image = Image.FromFile("D:/Documents/GitHub/GameLibrary/covers_mini/0.jpg");
+
+                    }
+                    else if (File.Exists("D:/Documents/GitHub/GameLibrary/covers_original/0.jpg"))
+                    {
+                        var new_mini = Bitmap.FromFile("D:/Documents/GitHub/GameLibrary/covers_original/0.jpg");
+                        CreateImage(new_mini, pbDlcCover[i].Width, pbDlcCover[i].Height, "0");
+                        pbDlcCover[i].Image = Image.FromFile("D:/Documents/GitHub/GameLibrary/covers_mini/0.jpg");
+                    }
+                    pbDlcCover[i].Image = Image.FromFile("D:/Documents/GitHub/GameLibrary/covers_original/0.jpg");
+                }
+
+                iDlcWidth = pbDlcCover[i].Size.Width;
+                iNbDlcPerRow = plDlcInfo.Width / iDlcWidth;
+                iLeftMarginBorder = lbDLC.Left;
+ 
+                //change de ligne si la prochaine jaquette n'a pas de place
+                if (iDlcWidth > plDlcInfo.Width - iDlcTotalWidth)
+                {
+                    iDlcTotalWidth = 0;
+                    iDlcShelveTop = pbDlcCover[i - 1].Bottom + iMarginX / 3;
+                }
+                //position 1ere jaquette de chaque ligne
+                if (iDlcTotalWidth == 0)
+                {
+                    pbDlcCover[i].Left = 0;
+                }
+                //position des jaquettes suivantes
+                else
+                {
+                    pbDlcCover[i].Left = pbDlcCover[i - 1].Location.X + pbDlcCover[i - 1].Width + iMarginX / 3;
+                }
+                // picturebox settings
+                pbDlcCover[i].Top = iDlcShelveTop;
+                pbDlcCover[i].Name = GetCover(dlcinfo);
+                pbDlcCover[i].Show();
+                pbDlcCover[i].BringToFront();
+                pbDlcCover[i].MouseEnter += new System.EventHandler(this.pbDlcCover_Enter);
+                pbDlcCover[i].MouseLeave += new System.EventHandler(this.pbDlcCover_Leave);
+                plDlcInfo.Controls.Add(pbDlcCover[i]);
+                //mise à jour des valeurs
+                iNbDisplayedDlc = iNbDisplayedDlc + 1;
+                iDlcTotalWidth = iDlcTotalWidth + iDlcWidth + iMarginX / 3;
+                i = i + 1;
+            }
+            ConnectionForDLCInfo.Close();
+            //add info to panel
+            plGameInfo.Controls.Add(bigCoverTitle);            
+            plGameInfo.Controls.Add(lbDeveloper);
+            plGameInfo.Controls.Add(lbPublisher);
+            plGameInfo.Controls.Add(lbYear);
+            plGameInfo.Controls.Add(lbGenre);           
+            if (bGameWithDLC == true)
+            {
+                plGameInfo.Controls.Add(plDlcInfo);
+            }
+            plGameInfo.Controls.Add(pbGameCoverMax);
+         
+            plGameInfo.Location = new Point(this.ClientSize.Width - plGameInfo.Width + 1, cbPlatformList.Height);
+            plGameList.Width = this.ClientSize.Width - plGameInfo.Width;
+            plGameList.Height = this.ClientSize.Height - cbPlatformList.Height - plFooter.Height;
+            plFooter.Location = new Point(0, plGameList.Height + cbPlatformList.Height);
+
+            bAlreadyClick = true;
         }
 
-        public void RemoveGames()
+        public void RemoveGames(int iCoverIndex, int iCoverID)
         {
-            GameList.Dispose();
-            GameList = null;
-            GameInfo.Dispose();
-            GameInfo = null;
-            fFormWidth = this.Width;
-            DisplayLibrary(strPlatformFilter, bInitDone); 
+            plGameList.Dispose();
+            plGameList = null;
+            plGameInfo.Dispose();
+            plGameInfo = null;
+            lbStatistics.Dispose();
+            lbStatistics = null;
+            fFormWidth = this.ClientSize.Width;
+            if (bHasRefresh == false)
+            {
+                iCoverIndex = 0;
+            }
+            DisplayLibrary(strPlatformFilter, bInitDone, iCoverIndex, iCoverID);
         }
  
-        private void PlatformList_SelectedIndexChanges(object sender, System.EventArgs e)
+        private void cbPlatformList_SelectedIndexChanges(object sender, System.EventArgs e)
         {
             var value = (ComboBox)sender;
-            if (PlatformList.Text == "All Platforms")
+            if (cbPlatformList.Text == "All Platforms")
             {
                 strPlatformFilter = "IS NOT NULL";
             }
             else
             {
-                strPlatformFilter = " = '" + PlatformList.Text + "'";
+                strPlatformFilter = " = '" + cbPlatformList.Text + "'";
             }
 
-            if (PlatformList.Text == "All Platforms")
+            if (cbPlatformList.Text == "All Platforms")
             {
                 iShelveHeight = iBoxArtDvdY + iMarginY;
             }
             else
             {
-                iShelveHeight = iBoxSizeArray[PlatformList.SelectedIndex - 1, 1] + iMarginY;
+                iShelveHeight = (int)iHardwareArray[cbPlatformList.SelectedIndex - 1, 5] + iMarginY;
             }
             
-            PlatformList.Text = strPlatformFilter;
+            cbPlatformList.Text = strPlatformFilter;
+            iHardwareSelected = cbPlatformList.SelectedIndex;
             strbuttonSearch = "";
-            RemoveGames();
+            RemoveGames(iCoverIndex, iCoverID);
         }
 
         private void SortList_SelectedIndexChanges(object sender, System.EventArgs e)
@@ -438,17 +773,15 @@ namespace MyDatabase
                 strPlatformSort = "release_year";
             }
             SortList.Text = strPlatformSort;
-            RemoveGames();
+            RemoveGames(iCoverIndex, iCoverID);
         }
 
         private void buttonAddNewGame_Click(object sender, System.EventArgs e)
         {
             NewGameTitle = new TextBox();
             NewGameTitle.KeyDown += new KeyEventHandler(buttonAddNewGame_Validation);
-            NewGameTitle.Location = new Point(PlatformList.Width + SortList.Width + buttonSearch.Width + buttonAddNewGame.Width, 0);
+            NewGameTitle.Location = new Point(cbPlatformList.Width + SortList.Width + buttonSearch.Width + buttonAddNewGame.Width, 0);
             NewGameTitle.Text = "Title";
-            //.Controls.Add(NewGameTitle);
-
         }
 
         private void buttonAddNewGame_Validation(object sender, KeyEventArgs e)
@@ -457,12 +790,12 @@ namespace MyDatabase
             if (e.KeyCode == Keys.Enter)
             {
                 strGameToAdd = text.Text;
-                MyConnection3 = new MySqlConnection("Server=" + strServer + ";" + "Uid=" + strUser + ";" + "Pwd=" + strPassword + ";" + "Database=" + strDatabase + ";");
-                MyConnection3.Open();
-                MySqlCommand cmd = MyConnection3.CreateCommand();
+                ConnectionToAddNewGame = new MySqlConnection("Server=" + strServer + ";" + "Uid=" + strUser + ";" + "Pwd=" + strPassword + ";" + "Database=" + strDatabase + ";");
+                ConnectionToAddNewGame.Open();
+                MySqlCommand cmd = ConnectionToAddNewGame.CreateCommand();
                 cmd.CommandText = "INSERT INTO games.test (title) VALUES ('"+strGameToAdd+"');";
                 cmd.ExecuteNonQuery();
-                MyConnection3.Close();
+                ConnectionToAddNewGame.Close();
                 NewGameTitle.Dispose();
                 NewGameTitle = null;
             }
@@ -472,45 +805,67 @@ namespace MyDatabase
         {
             strbuttonSearch = "'%"+"Plate-forme"+"%'";
             strPlatformFilter = "IS NOT NULL";
-            RemoveGames();
+            RemoveGames(iCoverIndex, iCoverID);
         }
+        int CoverNewLocX ;
+        int CoverNewLocY ;
+        
+        private void pbDlcCover_Enter(object sender, System.EventArgs e)
+        {
+            var name = (PictureBox)sender;
 
+            lbDLC.Text = "DLC : " + name.Tag;
+        }
+        private void pbDlcCover_Leave(object sender, System.EventArgs e)
+        {
+            lbDLC.Text = "DLC : ";
+        }
         private void GameCover_Enter(object sender, System.EventArgs e)
         {    
             var cover = (PictureBox)sender;
             strCover = cover.Name;
-
-            iSelectedCoverIndex = Int32.Parse(strCover);
-            Console.WriteLine(cover.TabIndex);
+            iCoverIndex = cover.TabIndex;
             iCoverOriginalX = cover.Location.X;
             iCoverOriginalY = cover.Location.Y;
             iCoverOriginalWidth = cover.Size.Width;
             iCoverOriginalHeight = cover.Size.Height;
-            
+
+            iSelectedCoverPosX = iCoverOriginalX;
+            iSelectedCoverPosY = iCoverOriginalY + iCoverOriginalHeight;
+            iSelectedCoverWidth = iCoverOriginalWidth;
+
             int CoverNewWidth = (int)(cover.Width * fScaleFactor);
             int CoverNewHeight = (int)(cover.Height * fScaleFactor);
 
-            int CoverNewLocX = (int)(iCoverOriginalX - ((CoverNewWidth - iCoverOriginalWidth) / 2));
-            int CoverNewLocY = (int)(iCoverOriginalY - ((CoverNewHeight - iCoverOriginalHeight) / 2));
+            CoverNewLocX = (int)(iCoverOriginalX - ((CoverNewWidth - iCoverOriginalWidth) / 2));
+            CoverNewLocY = (int)(iCoverOriginalY - ((CoverNewHeight - iCoverOriginalHeight) / 2));
             
-            GameCoverZoom = new PictureBox();
-            GameCoverZoom.SizeMode = PictureBoxSizeMode.Zoom;
-            GameCoverZoom.MouseLeave += new System.EventHandler(this.GameCoverZoom_Leave);
-            GameCoverZoom.MouseClick += new System.Windows.Forms.MouseEventHandler(this.GameCoverZoom_Click);
+            pbGameCoverZoom = new PictureBox();
+            pbGameCoverZoom.SizeMode = PictureBoxSizeMode.StretchImage;
+            pbGameCoverZoom.MouseLeave += new System.EventHandler(this.GameCoverZoom_Leave);
+            pbGameCoverZoom.MouseClick += new System.Windows.Forms.MouseEventHandler(this.GameCoverZoom_Click);
             try
             {
-                GameCoverZoom.Image = Image.FromFile("D:/Documents/GitHub/GameLibrary/covers_zoom/" + strCover + ".jpg");
+                pbGameCoverZoom.Image = Image.FromFile("D:/Documents/GitHub/GameLibrary/covers_zoom/" + strCover + ".jpg");
             }
             catch
             {
-                GameCoverZoom.Image = Image.FromFile("D:/Documents/GitHub/GameLibrary/covers_original/" + "0" + ".jpg");
+                pbGameCoverZoom.Image = Image.FromFile("D:/Documents/GitHub/GameLibrary/covers_original/" + "0" + ".jpg");
             }
-            GameCoverZoom.Height = CoverNewHeight;
-            GameCoverZoom.Width = CoverNewWidth;
-            ///GameCoverZoom.BackColor = Color.Black;
-            GameCoverZoom.Location = new Point(CoverNewLocX, CoverNewLocY);
-            GameList.Controls.Add(GameCoverZoom);
-            GameCoverZoom.BringToFront();
+            pbGameCoverZoom.Height = CoverNewHeight;
+            pbGameCoverZoom.Width = CoverNewWidth;
+            pbGameCoverZoom.BackColor = Color.FromArgb(255,255,255,255);
+            pbGameCoverZoom.Location = new Point(CoverNewLocX, CoverNewLocY);
+            plGameList.Controls.Add(pbGameCoverZoom);
+            pbGameCoverZoom.BringToFront();
+
+            //selector position management
+            if (iSelectedCoverIndex == iCoverIndex)
+            {
+                pbGameSelected.Width = (int)((pbGameCover[iCoverIndex].Width + iSelectedCoverSize) * fScaleFactor);
+                pbGameSelected.Height = (int)((pbGameCover[iCoverIndex].Height + iSelectedCoverSize) * fScaleFactor);
+                pbGameSelected.Location = new Point(CoverNewLocX - iSelectedCoverSize / 2, CoverNewLocY - iSelectedCoverSize / 2);
+            }
         }
 
         private void GameCover_Leave(object sender, System.EventArgs e)
@@ -524,114 +879,65 @@ namespace MyDatabase
         private void GameCoverZoom_Leave(object sender, System.EventArgs e)
         {
             //antibug
-            if (GameCoverZoom == null)
+            if (pbGameCoverZoom == null)
             {
                 return;
             }
             else
             {
-                GameCoverZoom.Dispose();
-                // GameCoverZoom = null;
+                pbGameCoverZoom.Dispose();
+                // pbGameCoverZoom = null;
             }
-        }
-
-        bool bAlreadyClick = false;
-        public void GameCoverZoom_Click(object sender, System.EventArgs e)
-        {
-            
-            float fBigCoverBottom;
-            float fBigCoverTop;
-            if (bAlreadyClick == true)
+            //selector position management
+            if (iSelectedCoverIndex == iCoverIndex)
             {
-                Remove_bigCover(GameInfo);
-            }
-
-            var zoomCover = (PictureBox)sender;
-            bigCover = new PictureBox();
-            bigCoverTitle = new Label();
-            bigCoverDev = new Label();
-            bigCoverPublisher = new Label();
-            bigCoverYear = new Label();
-            bigCoverGenre = new Label();
-            
-            MyConnection4 = new MySqlConnection("Server=" + strServer + ";" + "Uid=" + strUser + ";" + "Pwd=" + strPassword + ";" + "Database=" + strDatabase + ";");
-            MyConnection4.Open();
-            MySqlCommand cmd = MyConnection4.CreateCommand();
-            cmd.CommandText = "SELECT * FROM " + strSoftwareTable + " WHERE game_id = " + strCover ;
-            MySqlDataReader gameinfo = cmd.ExecuteReader();
-            gameinfo.Read();
-
-            bigCover.Width = GameInfo.Width;
-            bigCover.Height = zoomCover.Height * 2;
-            fBigCoverBottom = GameInfo.Height / 2;
-            fBigCoverTop = iBoxArtDvdY*2.20f - bigCover.Height;
-            bigCover.Image = Image.FromFile("D:/Documents/GitHub/GameLibrary/covers_zoom/" + strCover + ".jpg");
-            bigCover.Location = new Point(0, (int)fBigCoverTop);
-            bigCover.SizeMode = PictureBoxSizeMode.Zoom;
-            bigCover.BackColor = Color.AntiqueWhite;
-
-            bigCoverTitle.Text = "Titre : " + GetTitle(gameinfo);
-            bigCoverTitle.Location = new Point(0, bigCover.Bottom + 10);
-            bigCoverTitle.Width = GameInfo.Width;
-            bigCoverTitle.BackColor = Color.Aqua;
-
-            bigCoverDev.Text = "Développeur : " + GetDeveloper(gameinfo);
-            bigCoverDev.Location = new Point(0, bigCoverTitle.Bottom + 10);
-            bigCoverDev.Width = GameInfo.Width;
-            bigCoverDev.BackColor = Color.Aquamarine;
-
-            bigCoverPublisher.Text = "Éditeur : " + GetPublisher(gameinfo);
-            bigCoverPublisher.Location = new Point(0, bigCoverDev.Bottom + 10);
-            bigCoverPublisher.Width = GameInfo.Width;
-            bigCoverPublisher.BackColor = Color.Azure;
-
-            bigCoverYear.Text = "Sortie : " + GetReleaseYear(gameinfo);
-            bigCoverYear.Location = new Point(0, bigCoverPublisher.Bottom + 10);
-            bigCoverYear.Width = GameInfo.Width;
-            bigCoverYear.BackColor = Color.Beige;
-
-            if (GetGenre2(gameinfo) == "")
-                {
-                    bigCoverGenre.Text = "Genre : " + GetGenre(gameinfo);
-                }
-            else
-                {
-                    bigCoverGenre.Text = "Genre : " + GetGenre(gameinfo) + "/" + GetGenre2(gameinfo);
-                }
-            bigCoverGenre.Location = new Point(0, bigCoverYear.Bottom + 10);
-            bigCoverGenre.Width = GameInfo.Width;
-            bigCoverGenre.BackColor = Color.Bisque;
-
-            GameInfo.Controls.Add(bigCover);
-            GameInfo.Controls.Add(bigCoverTitle);
-            GameInfo.Controls.Add(bigCoverDev);
-            GameInfo.Controls.Add(bigCoverPublisher);
-            GameInfo.Controls.Add(bigCoverYear);
-            GameInfo.Controls.Add(bigCoverGenre);
-   
-
-            bAlreadyClick = true;
-            MyConnection4.Close();
+                pbGameSelected.Width = (int)(pbGameCover[iCoverIndex].Width + iSelectedCoverSize);
+                pbGameSelected.Height = (int)(pbGameCover[iCoverIndex].Height + iSelectedCoverSize);
+                pbGameSelected.Location = new Point(pbGameCover[iCoverIndex].Location.X - iSelectedCoverSize / 2, pbGameCover[iCoverIndex].Location.Y - iSelectedCoverSize / 2);               
+            }        
         }
         
-        public void Remove_bigCover(Panel GameInfo)
+        public void GameCoverZoom_Click(object sender, System.EventArgs e)
         {
-            bigCover.Dispose();
-            bigCover = null;
+            iSelectedCoverIndex = iCoverIndex;
+            var zoomCover = (PictureBox)sender;
+            //iCoverID =  (zoomCover.TabIndex); TO DELETE
+            if (bAlreadyClick == true)
+            {
+                Remove_bigCover(plGameInfo);
+            }
+            //selector position management
+            pbGameSelected.Width = (int)((pbGameCover[iCoverIndex].Width + iSelectedCoverSize) * fScaleFactor);
+            pbGameSelected.Height = (int)((pbGameCover[iCoverIndex].Height + iSelectedCoverSize) * fScaleFactor);
+            pbGameSelected.Location = new Point(CoverNewLocX - iSelectedCoverSize / 2, CoverNewLocY - iSelectedCoverSize / 2);
+
+            DisplayInfo(Int32.Parse(strCover));
+        }
+
+        public void Remove_bigCover(Panel plGameInfo)
+        {
+            pbGameCoverMax.Dispose();
+            pbGameCoverMax = null;
             bigCoverTitle.Dispose();
             bigCoverTitle = null;
-            bigCoverDev.Dispose();
-            bigCoverDev = null;
-            bigCoverPublisher.Dispose();
-            bigCoverPublisher = null;
-            bigCoverYear.Dispose();
-            bigCoverYear = null;
-            bigCoverGenre.Dispose();
-            bigCoverGenre = null;
+            lbDeveloper.Dispose();
+            lbDeveloper = null;
+            lbPublisher.Dispose();
+            lbPublisher = null;
+            lbYear.Dispose();
+            lbYear = null;
+            lbGenre.Dispose();
+            lbGenre = null;
+            if (bGameWithDLC == true)
+            {
+                plDlcInfo.Dispose();
+                plDlcInfo = null;
+            }
         }
 
         //Resize is always called when ResizeEnd is called, so add a flag to detect end of resize
         bool bResizeInProgress = false;
+        bool bHasRefresh = false;
         private void Refresh(object sender, System.EventArgs e)
         {
             if (bResizeInProgress || bInitDone == false)
@@ -641,7 +947,9 @@ namespace MyDatabase
             }
             else
             {
-                RemoveGames();
+                bHasRefresh = true;
+                RemoveGames(iCoverIndex, iCoverID);
+                bHasRefresh = false;
             }
         }
 
@@ -658,14 +966,16 @@ namespace MyDatabase
             }
         }
 
-        public string GetPlatformsList(MySqlDataReader platforms, int iColumn)
+
+
+        public string GetPlatformsName(MySqlDataReader platforms, int iColumn)
         {
             return platforms.GetString(iColumn);
         }
 
-        public string GetID(MySqlDataReader gameinfo)
+        public int GetID(MySqlDataReader gameinfo)
         {
-            return GetLocalized(gameinfo, 0);
+            return Int32.Parse(GetLocalized(gameinfo, 0));
         }
 
         public string GetTitle(MySqlDataReader gameinfo)
@@ -680,6 +990,9 @@ namespace MyDatabase
 
         public int GetPlatformIndex(MySqlDataReader fullbase)
         {
+            
+            
+            
             return Int32.Parse(GetLocalized(fullbase, 3));
         }
 
@@ -713,23 +1026,62 @@ namespace MyDatabase
             return GetLocalized(fullbase, 15);
         }
         
-        public string GetDLC(MySqlDataReader fullbase)
+        public string GetMainGame_ForDLC(MySqlDataReader fullbase)
         {
             return GetLocalized(fullbase, 14);
         }
 
+        public int HasDLC(MySqlDataReader fullbase)
+        {
+            return Int32.Parse(GetLocalized(fullbase, 16));
+        }
+        public int GetHardwareID(MySqlDataReader fullbasehardware2)
+        {
+            return Int32.Parse(GetLocalized(fullbasehardware2, 0));
+        }
+        public string GetHardwareName(MySqlDataReader fullbasehardware2)
+        {
+            return GetLocalized(fullbasehardware2, 1);
+        }  
+        public string GetManufacturer(MySqlDataReader fullbasehardware2)
+        {
+            return GetLocalized(fullbasehardware2, 2);
+        }  
+        public int GetPlatformRelease(MySqlDataReader fullbasehardware2)
+        {
+            return Int32.Parse(GetLocalized(fullbasehardware2, 3));
+        }  
         public int GetBoxeSizeX(MySqlDataReader fullbasehardware2)
         {
             return Int32.Parse(GetLocalized(fullbasehardware2, 4));
-        }
-        
+        }    
         public int GetBoxeSizeY(MySqlDataReader fullbasehardware2)
         {
             return Int32.Parse(GetLocalized(fullbasehardware2, 5));
         }
+        public int GetHardwareColorRed(MySqlDataReader fullbasehardware2)
+        {
+            return Int32.Parse(GetLocalized(fullbasehardware2, 6));
+        }
+        public int GetHardwareColorGreen(MySqlDataReader fullbasehardware2)
+        {
+            return Int32.Parse(GetLocalized(fullbasehardware2, 7));
+        }
+        public int GetHardwareColorBlue(MySqlDataReader fullbasehardware2)
+        {
+            return Int32.Parse(GetLocalized(fullbasehardware2, 8));
+        }
+        public string GetOnlineService(MySqlDataReader fullbasehardware2)
+        {
+            return GetLocalized(fullbasehardware2, 9);
+        }  
+        public string GetMedia(MySqlDataReader fullbasehardware2)
+        {
+            return GetLocalized(fullbasehardware2, 10);
+        }  
 
         // Allow Combo Box to center aligned
-        private void PlatformList_DrawItem(object sender, DrawItemEventArgs e)
+        private void cbPlatformList_DrawItem(object sender, DrawItemEventArgs e)
         {
             // By using Sender, one method could handle multiple ComboBoxes
             ComboBox cbx = sender as ComboBox;
@@ -758,6 +1110,34 @@ namespace MyDatabase
                     e.Graphics.DrawString(cbx.Items[e.Index].ToString(), cbx.Font, brush, e.Bounds, sf);
                 }
             }
+        }
+        
+        //donne les paramètres pour la position de l'image dans la picturebox
+        public void OffsetOfImage(PictureBox pbox)
+        {
+            //calculer les taux d'étirement/compression de l'image
+            float fXRatio = 1f;
+            float fYRatio = 1f;
+
+            if (pbox.SizeMode == PictureBoxSizeMode.Zoom)
+            {
+                float a = (float)pbox.Height / (float)pbox.Image.Height;
+                float b = (float)pbox.Width / (float)pbox.Image.Width;
+                fXRatio = Math.Min(a, b);
+                fYRatio = fXRatio;
+            }
+            //calculer la taille de l'image affichée
+            Size imgs = new Size((int)(pbox.Image.Width * fXRatio), (int)(pbox.Image.Height * fYRatio));
+            //calculer les différences entre l'image et le picturebox
+            iMargeXPictureBoxImage = (int)((pbox.Width - pbox.Image.Width * fXRatio) / 2);
+            iMargeYPictureBoxImage = (int)((pbox.Height - pbox.Image.Height * fYRatio) / 2);
+
+            ////min est le point minimum le plus haut à gauche de l'image
+            //min.X = diffx;
+            //min.Y = iMargeYPictureBoxImage;
+            ////max est le point le plus bas à droite de l'image
+            //max.X = (int)(diffx + imgs.Width);
+            //max.Y = (int)(iMargeYPictureBoxImage + imgs.Height);
         }
         
         //create missing cover

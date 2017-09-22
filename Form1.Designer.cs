@@ -30,8 +30,9 @@
 
         #endregion
 
-        private System.Windows.Forms.Panel GameList;
-        private System.Windows.Forms.Panel GameInfo;
-        private System.Windows.Forms.Panel Footer;
+        private System.Windows.Forms.Panel plGameList;
+        private System.Windows.Forms.Panel plGameInfo;
+        private System.Windows.Forms.Panel plDlcInfo;
+        private System.Windows.Forms.Panel plFooter;
     }
 }
