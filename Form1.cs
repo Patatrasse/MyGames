@@ -217,7 +217,7 @@ namespace MyDatabase
             MySqlCommand cmdHardware = ConnectionHardware.CreateCommand();
             cmdHardware.CommandText = "SELECT COUNT(*) FROM (SELECT hardware_id, COUNT(*) FROM " + strHardwareTable + " GROUP BY hardware_id) AS numplatform";
             int iTabSize = Convert.ToInt32(cmdHardware.ExecuteScalar());
- iHardwareArray = new object[iTabSize, 11];
+            iHardwareArray = new object[iTabSize, 11];
             MySqlDataReader fullbasehardware = cmdHardware.ExecuteReader();
 
             fullbasehardware.Read();
@@ -327,6 +327,7 @@ namespace MyDatabase
             plGameList.VerticalScroll.Visible = false;
             plGameList.AutoScroll = true;
             plGameList.BackColor = Color.White;
+            plGameList.MouseDown += new MouseEventHandler(this.plGameList_Click);
             Controls.Add(plGameList);
             //panel settings -> plGameInfo = panel avec les infos sur jeu sélectionnée 
             plGameInfo = new Panel();
@@ -347,6 +348,7 @@ namespace MyDatabase
                 iDLC = GetMainGame_ForDLC(fullbase);
                 int iHardwareIndex = GetPlatformIndex(fullbase);
                 iHardwareIndex = iListHardwareIndex.FindIndex(x => x==iHardwareIndex);
+
                 bDLC = false;
                 if (iDLC != "")
                 {
@@ -623,7 +625,6 @@ namespace MyDatabase
                 strCoverDLC = GetCover(dlcinfo);
                 int iDlcWidth;
                 int iNbDlcPerRow;
-                int iHardwareIndex = GetPlatformIndex(dlcinfo);
                 if (i == 0)
                 {
                     iDlcShelveTop = 0;
@@ -633,8 +634,8 @@ namespace MyDatabase
                 pbDlcCover[i] = new PictureBox();
                 pbDlcCover[i].SizeMode = PictureBoxSizeMode.Zoom;
                 //récupération des tailles des boîtes
-                pbDlcCover[i].Width = (int)((int)iHardwareArray[iHardwareIndex, 4] / 1.6);
-                pbDlcCover[i].Height = (int)((int)iHardwareArray[iHardwareIndex, 5] / 1.6);
+                pbDlcCover[i].Width = (int)((int)iHardwareArray[GetPlatformIndex(dlcinfo) - 1, 4] / 1.6);
+                pbDlcCover[i].Height = (int)((int)iHardwareArray[GetPlatformIndex(dlcinfo) - 1, 5] / 1.6);
                 pbDlcCover[i].Tag = GetTitle(dlcinfo);
                 //conversion des images manquantes pour le zoom et la sélection et la jaquette par défaut -> TODO : chemins relatifs
                 if (File.Exists("D:/Documents/GitHub/GameLibrary/covers_mini/" + strCoverDLC + ".jpg"))
@@ -761,10 +762,73 @@ namespace MyDatabase
             RemoveGames(iCoverIndex, iCoverID);
         }
 
-        private void SortList_SelectedIndexChanges(object sender, System.EventArgs e)
+        private void plGameList_Click(object sender, MouseEventArgs e)
         {
-            var value = (ComboBox)sender;
-            if (SortList.Text == "A->B")
+            string MouseButton = "";
+            switch (e.Button)
+            {
+                case (MouseButtons.Left):
+                    MouseButton = "Left_Click";
+                    break;
+                case (MouseButtons.Middle):
+                    MouseButton = "Middle_Click";
+                    break;
+                case (MouseButtons.Right):
+                    MouseButton = "Right_Click";
+                    System.Windows.Forms.ContextMenuStrip contextMenu1;
+                    contextMenu1 = new System.Windows.Forms.ContextMenuStrip();
+                    ToolStripItem item1 = contextMenu1.Items.Add("Sort by date");
+                    item1.Click += new EventHandler(menuItem_Click);
+                    item1.Image = Bitmap.FromFile("D:\\Documents\\GitHub\\GameLibrary\\MyGames\\37170.png");
+                    ToolStripItem item2 = contextMenu1.Items.Add("Sort by name");
+                    item2.Click += new EventHandler(menuItem_Click);
+                    item2.DisplayStyle = ToolStripItemDisplayStyle.ImageAndText;
+                    item2.Image = Bitmap.FromFile("D:\\Documents\\GitHub\\GameLibrary\\MyGames\\36672.png");
+                    plGameList.ContextMenuStrip = contextMenu1;   
+                    break;
+                case (MouseButtons.XButton1):
+                    MouseButton = "XButton1_Click"; //Previous
+                    break;
+                case (MouseButtons.XButton2):
+                    MouseButton = "XButton2_Click"; //Next
+                    break;                 
+        }
+        Console.WriteLine(MouseButton);   
+        }
+        
+         private void pbGameCoverZoom_Click(object sender, MouseEventArgs e)
+        {
+            string MouseButton = "";
+            switch (e.Button)
+            {
+                case (MouseButtons.Left):
+                    MouseButton = "Left_Click";
+                    break;
+                case (MouseButtons.Middle):
+                    MouseButton = "Middle_Click";
+                    break;
+                case (MouseButtons.Right):
+                    MouseButton = "Right_Click";
+                    System.Windows.Forms.ContextMenuStrip contextMenu2;
+                    contextMenu2 = new System.Windows.Forms.ContextMenuStrip();
+                    System.Windows.Forms.MenuItem menuItem1;
+
+                    contextMenu2.Items.Add("menuItem1");
+                    plGameList.ContextMenuStrip = contextMenu2;
+                    break;
+                case (MouseButtons.XButton1):
+                    MouseButton = "XButton1_Click"; //Previous
+                    break;
+                case (MouseButtons.XButton2):
+                    MouseButton = "XButton2_Click"; //Next
+                    break;
+            }   
+        }
+
+         public void menuItem_Click(object sender, System.EventArgs e)
+        {
+            ToolStripItem clickedItem = sender as ToolStripItem;
+            if (clickedItem.Text == "Sort by name")
             {
                 strPlatformSort = "title";
             }
@@ -772,7 +836,6 @@ namespace MyDatabase
             {
                 strPlatformSort = "release_year";
             }
-            SortList.Text = strPlatformSort;
             RemoveGames(iCoverIndex, iCoverID);
         }
 
@@ -843,7 +906,8 @@ namespace MyDatabase
             pbGameCoverZoom = new PictureBox();
             pbGameCoverZoom.SizeMode = PictureBoxSizeMode.StretchImage;
             pbGameCoverZoom.MouseLeave += new System.EventHandler(this.GameCoverZoom_Leave);
-            pbGameCoverZoom.MouseClick += new System.Windows.Forms.MouseEventHandler(this.GameCoverZoom_Click);
+            pbGameCoverZoom.MouseDown += new MouseEventHandler(this.pbGameCoverZoom_Click);
+            pbGameCoverZoom.MouseDown += new MouseEventHandler(this.GameCoverZoom_Click);
             try
             {
                 pbGameCoverZoom.Image = Image.FromFile("D:/Documents/GitHub/GameLibrary/covers_zoom/" + strCover + ".jpg");
@@ -965,72 +1029,54 @@ namespace MyDatabase
                 return fullbase.GetString(iColumn);
             }
         }
-
-
-
         public string GetPlatformsName(MySqlDataReader platforms, int iColumn)
         {
             return platforms.GetString(iColumn);
         }
-
         public int GetID(MySqlDataReader gameinfo)
         {
             return Int32.Parse(GetLocalized(gameinfo, 0));
         }
-
         public string GetTitle(MySqlDataReader gameinfo)
         {
             return GetLocalized(gameinfo, 1);
         }
-
         public string GetPlatform(MySqlDataReader gameinfo)
         {
             return GetLocalized(gameinfo, 2);
         }
-
         public int GetPlatformIndex(MySqlDataReader fullbase)
-        {
-            
-            
-            
+        {  
             return Int32.Parse(GetLocalized(fullbase, 3));
         }
-
         public string GetDeveloper(MySqlDataReader gameinfo)
         {
             return GetLocalized(gameinfo, 4);
         }
-
         public string GetPublisher(MySqlDataReader gameinfo)
         {
             return GetLocalized(gameinfo, 5);
         }
-
         public string GetReleaseYear(MySqlDataReader gameinfo)
         {
             return GetLocalized(gameinfo, 6);
         }
-
         public string GetGenre(MySqlDataReader gameinfo)
         {
             return GetLocalized(gameinfo, 7);
         }
-
         public string GetGenre2(MySqlDataReader gameinfo)
         {
             return GetLocalized(gameinfo, 8);
         }
-
         public string GetCover(MySqlDataReader fullbase)
         {
             return GetLocalized(fullbase, 15);
-        }
-        
+        }       
         public string GetMainGame_ForDLC(MySqlDataReader fullbase)
         {
             return GetLocalized(fullbase, 14);
         }
-
         public int HasDLC(MySqlDataReader fullbase)
         {
             return Int32.Parse(GetLocalized(fullbase, 16));
