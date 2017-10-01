@@ -20,6 +20,7 @@
             base.Dispose(disposing);
         }
 
+
         #region Windows Form Designer generated code
 
         /// <summary>
@@ -34,5 +35,6 @@
         private System.Windows.Forms.Panel plGameInfo;
         private System.Windows.Forms.Panel plDlcInfo;
         private System.Windows.Forms.Panel plFooter;
+
     }
 }
