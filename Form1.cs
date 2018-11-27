@@ -43,10 +43,8 @@ namespace MyDatabase
         public string strCoverDLC;
         public string strCoverType;
         public string strPlatformSort = "title";
-        public string strbtSearch = "";
-        public string strTooltip = "Test";
-        public string strDefaultSearch = "Tapez votre recherche";
-        public string strSearchResults = "";
+        public string strbuttonSearch = "";
+        public string strGameToAdd = "";
         public string iDLC;
         public bool bDLC;
         //interface
@@ -60,9 +58,8 @@ namespace MyDatabase
         public PictureBox pbEditIcon;
         public ComboBox cbPlatformList;
         public ComboBox SortList;
-        public Button btSearch;
-        public Button btAddNewGame;
-        public Button btCancel;
+        public Button buttonSearch;
+        public Button buttonAddNewGame;
         public TextBox NewGameTitle;
         public Label bigCoverTitle;
         public Label lbDeveloper;
@@ -71,19 +68,10 @@ namespace MyDatabase
         public Label lbGenre;
         public Label lbSerie;
         public Label lbDLC;
-        public Label lbSearchResult;
-        public CheckBox chbTitle;
-        public CheckBox chbDev;
-        public CheckBox chbPublisher;
-        public CheckBox chbGenre;
-        public CheckBox chbSerie;
         public TextBox EditBox;
-        public TextBox tbSearch;
         public RadioButton buttonAlphaSort;
         public RadioButton buttonNumSort;
         public Label lbStatistics;
-        public ToolTip ttSearch;
-        public ToolTip ttButtonAdd;
         List<int> iListHardwareIndex = new List<int>();
        //var
         int iGameTableSize;
@@ -112,15 +100,8 @@ namespace MyDatabase
         int iCoverIndex = 0;
         int iCoverID;
         bool bAlreadyClick = false;
-        bool bSearchMode = false;
-        bool bSearchInProgress = false;
         object[,] iHardwareArray;
         int iItemSelected = 1;
-        public string strSearchTitle ;
-        public string strSearchDev;
-        public string strSearchPublisher;
-        public string strSearchGenre;
-        public string strSearchSerie;
         //taille des covers
         static int iBoxArtDvdY = 183;
         static int iShelveHeight = 195;
@@ -167,14 +148,30 @@ namespace MyDatabase
             cbPlatformList.FlatStyle = FlatStyle.System;
             cbPlatformList.DropDownStyle = ComboBoxStyle.DropDownList;
             cbPlatformList.Location = new Point(0, 0);
-            cbPlatformList.Font = new Font("Ubuntu Bold", 14);
+            cbPlatformList.Font = new Font("Arial Bold", 14);
 
-            //label pour afficher les résulats de la recherche à la place de la combobox filtre
-            lbSearchResult = new Label();
-            lbSearchResult.Location = new Point(0, 0);
-            lbSearchResult.TextAlign = ContentAlignment.MiddleCenter;
-            lbSearchResult.Font = new Font("Ubuntu Bold", 14);
+            //buttonSearch = new Button();
+            //buttonSearch.Click += new EventHandler(buttonSearch_Click);
+            //buttonSearch.Image = Image.FromFile("D:/Documents/GitHub/GameLibrary/MyGames/39308.png");
+            //buttonSearch.BackColor = Color.Transparent;
+            //buttonSearch.ForeColor = Color.Transparent;
+            //buttonSearch.FlatStyle = FlatStyle.Flat;
+            //buttonSearch.FlatAppearance.BorderSize = 0;
+            //buttonSearch.Height = 32;
+            //buttonSearch.Width = 32;
+            //buttonSearch.Location = new Point(buttonNumSort.Location.X + buttonNumSort.Width, 0);
 
+            //buttonAddNewGame = new Button();
+            //buttonAddNewGame.Click += new EventHandler(buttonAddNewGame_Click);
+            //buttonAddNewGame.Image = Image.FromFile("D:/Documents/GitHub/GameLibrary/MyGames/36780.png");
+            //buttonAddNewGame.BackColor = Color.Transparent;
+            //buttonAddNewGame.ForeColor = Color.Transparent;
+            //buttonAddNewGame.FlatStyle = FlatStyle.Flat;
+            //buttonAddNewGame.FlatAppearance.BorderSize = 0;
+            //buttonAddNewGame.Height = 32;
+            //buttonAddNewGame.Width = 32;
+            //buttonAddNewGame.Location = new Point(buttonSearch.Location.X + buttonSearch.Width, 0);
+            
             //boucle nombre de platformes + 1 pour tout afficher
             int k = 0;
             
@@ -202,7 +199,6 @@ namespace MyDatabase
             cbPlatformList.DrawItem += new DrawItemEventHandler(cbPlatformList_DrawItem);
             cbPlatformList.DropDownClosed += new EventHandler(cbPlatformList_DropDownClosed);
             this.Controls.Add(cbPlatformList);
-            this.Controls.Add(lbSearchResult);
 
             ConnectionHardware = new MySqlConnection("Server=" + strServer + ";" + "Uid=" + strUser + ";" + "Pwd=" + strPassword + ";" + "Database=" + strDatabase + ";");
             ConnectionHardware.Open();
@@ -263,68 +259,11 @@ namespace MyDatabase
             fullbasehardware2.Close();
             ConnectionHardware.Close();
 
-            //panel pour afficher des info sur l'affichage + options
+            //panel pour afficher des info sur l'affichage
             plFooter = new Panel();
             plFooter.Height = cbPlatformList.Height;
-            plFooter.BackColor = Color.GhostWhite;
+            plFooter.BackColor = Color.Red;
             this.Controls.Add(plFooter);
-
-            btSearch = new Button();
-            btSearch.Click += new EventHandler(btSearch_Click);
-            btSearch.BackgroundImage = Image.FromFile("D:\\Documents\\GitHub\\GameLibrary\\MyGames\\icon_search32.png");
-            btSearch.BackgroundImageLayout = ImageLayout.Zoom;
-            btSearch.Height = plFooter.Height;
-            btSearch.Width = btSearch.Height;
-            btSearch.Location = new Point(0, 0);
-            btSearch.BackColor = Color.GhostWhite;
-            btSearch.ForeColor = Color.GhostWhite;
-            btSearch.FlatStyle = FlatStyle.Flat;
-            btSearch.FlatAppearance.BorderSize = 0;
-            btSearch.Text = "";
-
-            btAddNewGame = new Button();
-            btAddNewGame.Click += new EventHandler(btAddNewGame_Click);
-            btAddNewGame.BackgroundImage = Image.FromFile("D:\\Documents\\GitHub\\GameLibrary\\MyGames\\icon_add32.png");
-            btAddNewGame.BackgroundImageLayout = ImageLayout.Zoom;
-            btAddNewGame.Height = plFooter.Height;
-            btAddNewGame.Width = btSearch.Height;
-            btAddNewGame.Location = new Point(btSearch.Width, 0);
-            btAddNewGame.BackColor = Color.GhostWhite;
-            btAddNewGame.ForeColor = Color.GhostWhite;
-            btAddNewGame.FlatStyle = FlatStyle.Flat;
-            btAddNewGame.FlatAppearance.BorderSize = 0;
-            btAddNewGame.Tag = "Add new game";
-
-            btCancel = new Button();
-            btCancel.Click += new EventHandler(btCancel_Click);
-            btCancel.BackgroundImage = Image.FromFile("D:\\Documents\\GitHub\\GameLibrary\\MyGames\\icon_cancel32.png");
-            btCancel.BackgroundImageLayout = ImageLayout.Zoom;
-            btCancel.Height = plFooter.Height;
-            btCancel.Width = btCancel.Height;
-            btCancel.Location = new Point(0, 0);
-            btCancel.BackColor = Color.GhostWhite;
-            btCancel.ForeColor = Color.GhostWhite;
-            btCancel.FlatStyle = FlatStyle.Flat;
-            btCancel.FlatAppearance.BorderSize = 0;
-            btCancel.Text = "";
-
-            tbSearch = new TextBox();
-            tbSearch.KeyDown += new KeyEventHandler(tbSearch_Validation);
-            tbSearch.Font = new Font("Ubuntu", 8, FontStyle.Regular);
-            tbSearch.Location = new Point(btSearch.Width, 0);
-            tbSearch.Width = (plFooter.Width - btSearch.Width) / 6;
-            tbSearch.MinimumSize = new Size(175, 0);
-
-            chbTitle = new CheckBox();
-            chbDev = new CheckBox();
-            chbPublisher = new CheckBox();
-            chbGenre = new CheckBox();
-            chbSerie = new CheckBox();
-            chbTitle.Checked = true;
-            chbGenre.Checked = true;
-            chbSerie.Checked = true;
-            chbPublisher.Checked = true;
-            chbDev.Checked = true;
 
             DisplayLibrary(strPlatformFilter, bInitDone, iCoverIndex, iCoverID);
         }
@@ -337,45 +276,28 @@ namespace MyDatabase
         public void DisplayLibrary(string strPlatformFilter, bool bInitDone, int iCoverIndex, int iCoverID)
         {
             cbPlatformList.Width = (int)fFormWidth;
-            lbSearchResult.Width = cbPlatformList.Width;
-            lbSearchResult.Height = cbPlatformList.Height;
             plFooter.Width = (int)fFormWidth - iInfoWidth;
             //accès base de jeux
             ConnectionToDisplayGames = new MySqlConnection("Server=" + strServer + ";" + "Uid=" + strUser + ";" + "Pwd=" + strPassword + ";" + "Database=" + strDatabase + ";");
             ConnectionToDisplayGames.Open();
             MySqlCommand cmd = ConnectionToDisplayGames.CreateCommand();
-
+            cmd.CommandText = "SELECT COUNT(*) FROM " + strSoftwareTable + " WHERE platform IS NOT NULL";
+            iGameTableSize = Convert.ToInt32(cmd.ExecuteScalar());
             //prise en compte de la recherche ou non
-            if (bSearchMode != true)
+            if (strbuttonSearch == "")
             {
-                cmd.CommandText = "SELECT COUNT(*) FROM " + strSoftwareTable + " WHERE platform IS NOT NULL";
-                iGameTableSize = Convert.ToInt32(cmd.ExecuteScalar());
                 cmd.CommandText = "SELECT * FROM " + strSoftwareTable + " WHERE platform LIKE " + "'" +  strPlatformFilter + "'" + " ORDER BY " + strPlatformSort;
-                
             }
-            else
+            else 
             {
-                cmd.CommandText = "SELECT COUNT(*) FROM " + strSoftwareTable + " WHERE " +
-                                  strSearchTitle + " OR " + strSearchDev + " OR " + strSearchPublisher + " OR " + strSearchGenre + " OR " + strSearchSerie + " ORDER BY " + strPlatformSort;
-
-                iGameTableSize = Convert.ToInt32(cmd.ExecuteScalar());
-                cmd.CommandText = "SELECT * FROM " + strSoftwareTable + " WHERE " +
-                                  strSearchTitle + " OR " + strSearchDev + " OR " + strSearchPublisher + " OR " + strSearchGenre + " OR " + strSearchSerie + " ORDER BY " + strPlatformSort;
-                if (iGameTableSize == 0)
-                {
-                    lbSearchResult.Text = "\"" + tbSearch.Text + "\"" + " : " + iGameTableSize + " jeu trouvé";
-                    cbPlatformList.Hide();
-                    lbSearchResult.Show();
-                    return;
-                }
-                if (iGameTableSize > 1)
-                {
-                    lbSearchResult.Text = "\"" + tbSearch.Text + "\"" + " : " + iGameTableSize + " jeux trouvés";
-                }
-                else
-                {
-                    lbSearchResult.Text = "\"" + tbSearch.Text + "\"" + " : " + iGameTableSize + " jeu trouvé";
-                }
+                cmd.CommandText = "SELECT * FROM " + strSoftwareTable + " WHERE " + 
+                "title LIKE " + strbuttonSearch + " OR " + 
+                "serie LIKE " + strbuttonSearch + " OR " + 
+                "developer LIKE " + strbuttonSearch + " OR " + 
+                "publisher LIKE  " + strbuttonSearch + " OR " + 
+                "genre LIKE " + strbuttonSearch + " OR " + 
+                "subgenre LIKE " + strbuttonSearch + " OR " +
+                "serie LIKE " + strbuttonSearch + " ORDER BY " + strPlatformSort;
             }
             MySqlDataReader fullbase = cmd.ExecuteReader();
 
@@ -459,15 +381,15 @@ namespace MyDatabase
                 iGameWidth = pbGameCover[i].Size.Width;
                 int iNbGamesPerRow;
                 //calcul de la marge à gauche pour démarrer le placement des jaquettes -> valeur fixe pour "All platforms"
-                if (bSearchMode == true)
-                {
-                    iLeftMarginBorder = iMarginX;
-                }
-                else
-                {
+                //if (cbPlatformList.SelectedIndex == 0)
+                //{
+                //    iLeftMarginBorder = iMarginX;
+                //}
+                //else
+                //{
                     iNbGamesPerRow = (int)fWidthLibrary / (iGameWidth + iMarginX);
                     iLeftMarginBorder = ((int)fWidthLibrary - (iNbGamesPerRow * (iGameWidth + iMarginX))) / 2 + iMarginX / 2;
-                }
+                //}
                 //les DLC ne sont pas affichés
                 if (bDLC == false)
                 {
@@ -475,14 +397,7 @@ namespace MyDatabase
                     if (iGameWidth + iLeftMarginBorder > fWidthLibrary - iTotalGameWidth)
                     {
                         iTotalGameWidth = 0;
-                        if (bSearchMode == true)
-                        {
-                            iShelveTop = iShelveHeight + iMarginY + iShelveTop; //iShelveHeight + iShelveTop;
-                        }
-                        else
-                        {
-                            iShelveTop = (int)iHardwareArray[cbPlatformList.SelectedIndex, 5] + iMarginY + iShelveTop; //iShelveHeight + iShelveTop;
-                        }
+                        iShelveTop = (int)iHardwareArray[cbPlatformList.SelectedIndex, 5] + iMarginY + iShelveTop; //iShelveHeight + iShelveTop;
                     }
                     //position 1ere jaquette de chaque ligne
                     if (iTotalGameWidth == 0)
@@ -496,15 +411,7 @@ namespace MyDatabase
                         pbGameCover[i].Left = pbGameCover[i - 1].Location.X + pbGameCover[i - 1].Width + iMarginX;
                     }
                     // picturebox settings
-                    if (bSearchMode == true)
-                    {
-                        pbGameCover[i].Top = iShelveTop + (iShelveHeight - pbGameCover[i].Height);
-                    }
-                    else
-                    {
-                        pbGameCover[i].Top = iShelveTop + iMarginY;// iShelveTop + (iShelveHeight - pbGameCover[i].Height);
-                    }
-                    
+                    pbGameCover[i].Top = iShelveTop + iMarginY;// iShelveTop + (iShelveHeight - pbGameCover[i].Height);
                     pbGameCover[i].Name = GetCover(fullbase);
                     pbGameCover[i].Show();
                     pbGameCover[i].MouseEnter += new System.EventHandler(this.GameCover_Enter);
@@ -529,55 +436,20 @@ namespace MyDatabase
             pbGameSelected.Height = pbGameCover[iCoverIndex].Height + iSelectedCoverSize;
             pbGameSelected.Location = new Point(pbGameCover[iCoverIndex].Location.X - iSelectedCoverSize / 2, pbGameCover[iCoverIndex].Location.Y - iSelectedCoverSize / 2);            
             //couleur du feedback de sélection dépendant de la platforme
-            if (bSearchMode == true)
-            {
-                pbGameSelected.BackColor = Color.Black;
-            }
-            else
-            {
+            //if (cbPlatformList.SelectedIndex == 0)
+            //{
+            //    pbGameSelected.BackColor = Color.Black;
+            //}
+            //else
+            //{
                 pbGameSelected.BackColor = Color.FromArgb(255, (int)iHardwareArray[cbPlatformList.SelectedIndex, 6], (int)iHardwareArray[cbPlatformList.SelectedIndex, 7], (int)iHardwareArray[cbPlatformList.SelectedIndex, 8]);
-            }
+            //}
             plGameList.Controls.Add(pbGameSelected);
             fullbase.Close();
             ConnectionToDisplayGames.Close();
 
-            tbSearch.Text = strDefaultSearch;
-
-            chbTitle.Text = "Titre";
-            chbDev.Text = "Développeur";
-            chbPublisher.Text = "Éditeur";
-            chbGenre.Text = "Genre";
-            chbSerie.Text = "Série";
-
-            int iCheckboxwidth;
-            iCheckboxwidth = Math.Max(TextRenderer.MeasureText(chbTitle.Text, chbTitle.Font).Width,
-                                Math.Max(TextRenderer.MeasureText(chbDev.Text, chbTitle.Font).Width,
-                                Math.Max(TextRenderer.MeasureText(chbPublisher.Text, chbTitle.Font).Width, TextRenderer.MeasureText(chbGenre.Text, chbTitle.Font).Width)));
-            chbTitle.Location = new Point(tbSearch.Right + 10, 0);
-            
-            chbTitle.Font = new Font("Ubuntu", 8, FontStyle.Regular);
-            chbTitle.Width = iCheckboxwidth;
-
-            chbGenre.Location = new Point(chbTitle.Right, 0);
-            chbGenre.Font = chbTitle.Font;
-            chbGenre.Width = iCheckboxwidth;
-
-            chbSerie.Location = new Point(chbGenre.Right, 0);
-            
-            chbSerie.Font = chbTitle.Font;
-            chbSerie.Width = iCheckboxwidth;
-
-            chbPublisher.Location = new Point(chbSerie.Right, 0);
-            
-            chbPublisher.Font = chbTitle.Font;
-            chbPublisher.Width = iCheckboxwidth;
-
-            chbDev.Location = new Point(chbPublisher.Right, 0);
-            
-            chbDev.Font = chbTitle.Font;
-            chbDev.Width = TextRenderer.MeasureText(chbDev.Text, chbTitle.Font).Width + 25;
-
             lbStatistics = new Label();
+            lbStatistics.AutoSize = true;
             if (iNbPlatformDLC == 0)
             {
                 strDlcCover = "";
@@ -598,101 +470,12 @@ namespace MyDatabase
             //{
             //    lbStatistics.Text = "Jeux : " + iNbDisplayedGames + " - DLC : " + iNbPlatformDLC;
             //}
-            lbStatistics.Font = new Font("Ubuntu", 10, FontStyle.Regular);
+            lbStatistics.Font = new Font("Ubuntu", 8, FontStyle.Regular);
             lbStatistics.TextAlign = ContentAlignment.MiddleLeft;
-            lbStatistics.BackColor = Color.GhostWhite;
-            lbStatistics.Location = new Point(btSearch.Width + btAddNewGame.Width, 0);
-            lbStatistics.Height = plFooter.Height;
-            SizeF stringSize = new SizeF();
-            using (Graphics g = CreateGraphics())
-            {
-                stringSize = g.MeasureString(lbStatistics.Text, lbStatistics.Font);
-
-            }
-            lbStatistics.Width = (int)stringSize.Width + 10;
-            
-            ttSearch = new ToolTip();
-            ttSearch.OwnerDraw = true;
-            ttSearch.Draw += new DrawToolTipEventHandler(ToolTip_Draw);
-            ttSearch.Popup += new PopupEventHandler(ToolTip_Popup);
-            ttSearch.SetToolTip(this.btSearch, strTooltip);
-            ttSearch.InitialDelay = 0;
-            ttSearch.BackColor = Color.FloralWhite;
-            ttSearch.Tag = "Chercher un jeu";
-
-            ttButtonAdd = new ToolTip();
-            ttButtonAdd.OwnerDraw = true;
-            ttButtonAdd.Draw += new DrawToolTipEventHandler(ToolTip_Draw);
-            ttButtonAdd.Popup += new PopupEventHandler(ToolTip_Popup);
-            ttButtonAdd.SetToolTip(this.btAddNewGame, strTooltip);
-            ttButtonAdd.InitialDelay = 0;
-            ttButtonAdd.BackColor = Color.FloralWhite;
-            ttButtonAdd.Tag = "Ajouter un jeu";
-
-            plFooter.Controls.Add(btSearch);
-            plFooter.Controls.Add(btCancel);
-            plFooter.Controls.Add(tbSearch);
-            plFooter.Controls.Add(btAddNewGame);
+            lbStatistics.BackColor = Color.LightGoldenrodYellow;
+            lbStatistics.Dock = DockStyle.Bottom;
             plFooter.Controls.Add(lbStatistics);
-            plFooter.Controls.Add(chbTitle);
-            plFooter.Controls.Add(chbDev);
-            plFooter.Controls.Add(chbPublisher);
-            plFooter.Controls.Add(chbGenre);
-            plFooter.Controls.Add(chbSerie);
-
-            //Search state  
-            if (bSearchMode == true)
-            {
-                cbPlatformList.Hide();
-                lbSearchResult.Show();
-
-                tbSearch.Show();       
-                btCancel.Show();
-                
-                btAddNewGame.Hide();
-                lbStatistics.Hide();
-                if (plFooter.Width < btCancel.Width + tbSearch.Width + chbTitle.Width + chbDev.Width + chbPublisher.Width + chbGenre.Width + chbSerie.Width)
-                {
-                    chbTitle.Hide();
-                    chbDev.Hide();
-                    chbPublisher.Hide();
-                    chbGenre.Hide();
-                    chbSerie.Hide();
-                }
-                else
-                {
-                    chbTitle.Show();
-                    chbDev.Show();
-                    chbPublisher.Show();
-                    chbGenre.Show();
-                    chbSerie.Show();
-                }
-            }
-            else
-            {
-                cbPlatformList.Show();
-                lbSearchResult.Hide();
-
-                tbSearch.Hide();              
-                btCancel.Hide();
-                chbTitle.Hide();
-                chbDev.Hide();
-                chbPublisher.Hide();
-                chbGenre.Hide();
-                chbSerie.Hide();
-
-                btSearch.Show();
-                btAddNewGame.Show();
-                
-                if (plFooter.Width < lbStatistics.Width + btSearch.Width + btAddNewGame.Width)
-                {
-                    lbStatistics.Hide();
-                }
-                else
-                {
-                    lbStatistics.Show();
-                }      
-            }
+            
             DisplayInfo(iCoverID);
         }
         
@@ -993,21 +776,12 @@ namespace MyDatabase
 
         public void RemoveGames(int iCoverIndex, int iCoverID)
         {
-            if (plGameList != null)
-            {
-                plGameList.Dispose();
-                plGameList = null;
-            }
-            if (plGameInfo != null)
-            {
-                plGameInfo.Dispose();
-                plGameInfo = null;
-            }
-            if (lbStatistics != null)
-            {
-                lbStatistics.Dispose();
-                lbStatistics = null;
-            }
+            plGameList.Dispose();
+            plGameList = null;
+            plGameInfo.Dispose();
+            plGameInfo = null;
+            lbStatistics.Dispose();
+            lbStatistics = null;
             fFormWidth = this.ClientSize.Width;
             if (bHasRefresh == false)
             {
@@ -1040,9 +814,7 @@ namespace MyDatabase
             cbPlatformList.Text = strPlatformFilter;
             iHardwareSelected = cbPlatformList.SelectedIndex;
             iSelectedCoverIndex = 0;
-            //strbtSearch = "";
-            bSearchMode = false;
-
+            strbuttonSearch = "";
             RemoveGames(iCoverIndex, iCoverID);
         }
 
@@ -1065,12 +837,12 @@ namespace MyDatabase
                     ToolStripItem item1 = contextMenu1.Items.Add("Sort by name");
                     item1.Click += new EventHandler(menuItem_Click);
                     item1.DisplayStyle = ToolStripItemDisplayStyle.ImageAndText;
-                    item1.Image = Bitmap.FromFile("D:\\Documents\\GitHub\\GameLibrary\\MyGames\\icon_sortalph.png");
+                    item1.Image = Bitmap.FromFile("D:\\Documents\\GitHub\\GameLibrary\\MyGames\\36672.png");
 
                     ToolStripItem item2 = contextMenu1.Items.Add("Sort by date");
                     item2.Click += new EventHandler(menuItem_Click);
                     item2.DisplayStyle = ToolStripItemDisplayStyle.ImageAndText;
-                    item2.Image = Bitmap.FromFile("D:\\Documents\\GitHub\\GameLibrary\\MyGames\\icon_sortnum.png");
+                    item2.Image = Bitmap.FromFile("D:\\Documents\\GitHub\\GameLibrary\\MyGames\\37170.png");
                     if (iItemSelected == 1)
                     {
                         ((ToolStripMenuItem)item1).Checked = true;
@@ -1139,75 +911,40 @@ namespace MyDatabase
             RemoveGames(iCoverIndex, iCoverID);
         }
 
-        private void btAddNewGame_Click(object sender, System.EventArgs e)
+        private void buttonAddNewGame_Click(object sender, System.EventArgs e)
         {
             NewGameTitle = new TextBox();
-            NewGameTitle.KeyDown += new KeyEventHandler(btAddNewGame_Validation);
-            NewGameTitle.Location = new Point(cbPlatformList.Width + SortList.Width + btSearch.Width + btAddNewGame.Width, 0);
+            NewGameTitle.KeyDown += new KeyEventHandler(buttonAddNewGame_Validation);
+            NewGameTitle.Location = new Point(cbPlatformList.Width + SortList.Width + buttonSearch.Width + buttonAddNewGame.Width, 0);
             NewGameTitle.Text = "Title";
         }
 
-        private void btAddNewGame_Validation(object sender, KeyEventArgs e)
+        private void buttonAddNewGame_Validation(object sender, KeyEventArgs e)
         {
-            //var text = (TextBox)sender;
-            //if (e.KeyCode == Keys.Enter)
-            //{
-            //    strGameToAdd = text.Text;
-            //    ConnectionToAddNewGame = new MySqlConnection("Server=" + strServer + ";" + "Uid=" + strUser + ";" + "Pwd=" + strPassword + ";" + "Database=" + strDatabase + ";");
-            //    ConnectionToAddNewGame.Open();
-            //    MySqlCommand cmd = ConnectionToAddNewGame.CreateCommand();
-            //    cmd.CommandText = "INSERT INTO games.test (title) VALUES ('"+strGameToAdd+"');";
-            //    cmd.ExecuteNonQuery();
-            //    ConnectionToAddNewGame.Close();
-            //    NewGameTitle.Dispose();
-            //    NewGameTitle = null;
-            //}
+            var text = (TextBox)sender;
+            if (e.KeyCode == Keys.Enter)
+            {
+                strGameToAdd = text.Text;
+                ConnectionToAddNewGame = new MySqlConnection("Server=" + strServer + ";" + "Uid=" + strUser + ";" + "Pwd=" + strPassword + ";" + "Database=" + strDatabase + ";");
+                ConnectionToAddNewGame.Open();
+                MySqlCommand cmd = ConnectionToAddNewGame.CreateCommand();
+                cmd.CommandText = "INSERT INTO games.test (title) VALUES ('"+strGameToAdd+"');";
+                cmd.ExecuteNonQuery();
+                ConnectionToAddNewGame.Close();
+                NewGameTitle.Dispose();
+                NewGameTitle = null;
+            }
         }
 
-        private void btSearch_Click(object sender, System.EventArgs e)
+        private void buttonSearch_Click(object sender, System.EventArgs e)
         {
-            //strbtSearch = "'%"+"Plate-forme"+"%'";
-            //strPlatformFilter = "IS NOT NULL";
-            bSearchMode = true;
-            tbSearch.Show();
-            tbSearch.Focus();            
-            btCancel.Show();
-            chbTitle.Show();
-            chbDev.Show();
-            chbPublisher.Show();
-            chbGenre.Show();
-            chbSerie.Show();
-            btSearch.Hide();
-            btAddNewGame.Hide();
-            lbStatistics.Hide();
-        }
-
-        private void btCancel_Click(object sender, System.EventArgs e)
-        {
-            //strbtSearch = "'%"+"Plate-forme"+"%'";
-            //strPlatformFilter = "IS NOT NULL";
-            bSearchMode = false;
+            strbuttonSearch = "'%"+"Plate-forme"+"%'";
+            strPlatformFilter = "IS NOT NULL";
             RemoveGames(iCoverIndex, iCoverID);
-            
-            //bSearchMode = false;
-            //tbSearch.Hide();
-            //btCancel.Hide();
-            //chbTitle.Hide();
-            //chbDev.Hide();
-            //chbPublisher.Hide();
-            //chbGenre.Hide();
-            //chbSerie.Hide();
-            //btSearch.Show();
-            //btAddNewGame.Show();
-            //lbStatistics.Show();
-            //if (plFooter.Width < lbStatistics.Width + btSearch.Width + btAddNewGame.Width)
-            //{
-            //    lbStatistics.Hide();
-            //}
         }
-
-        int CoverNewLocX;
-        int CoverNewLocY;
+        int CoverNewLocX ;
+        int CoverNewLocY ;
+        
         private void pbDlcCover_Enter(object sender, System.EventArgs e)
         {
             var name = (PictureBox)sender;
@@ -1339,7 +1076,7 @@ namespace MyDatabase
             var info = (Label)sender;
             pbEditIcon = new PictureBox();
             pbEditIcon.SizeMode = PictureBoxSizeMode.Zoom;
-            pbEditIcon.Image = Image.FromFile("D:/Documents/GitHub/GameLibrary/MyGames/icon_edit.png");
+            pbEditIcon.Image = Image.FromFile("D:/Documents/GitHub/GameLibrary/MyGames/149307.png");
             pbEditIcon.Width = 12;
             pbEditIcon.Height = 12;
             pbEditIcon.Location = new Point(info.Location.X - pbEditIcon.Width, info.Location.Y + (info.Height - pbEditIcon.Height) / 2);
@@ -1354,61 +1091,6 @@ namespace MyDatabase
             pbEditIcon = null;
         }
         
-        private void tbSearch_Validation(object sender, KeyEventArgs e)
-        {           
-            if (e.KeyCode == Keys.Enter)
-            {
-                bSearchMode = true;
-                strbtSearch = tbSearch.Text ;
-                strDefaultSearch = strbtSearch;
-                if(chbTitle.Checked == true)
-                {
-                    strSearchTitle = "title LIKE '%" + strbtSearch + "%'";
-                }
-                else
-                {
-                    strSearchTitle = "title LIKE ''";
-                }
-                if(chbDev.Checked == true)
-                {
-                    strSearchDev = "developer LIKE '%" + strbtSearch + "%'";
-                }
-                else
-                {
-                    strSearchDev = "developer LIKE ''";
-                }
-                if(chbPublisher.Checked == true)
-                {
-                    strSearchPublisher = "publisher LIKE '%" + strbtSearch + "%'";
-                }
-                else
-                {
-                    strSearchPublisher = "publisher LIKE ''";
-                }
-                if(chbGenre.Checked == true)
-                {
-                    strSearchGenre = "genre LIKE '%" + strbtSearch + "%' OR subgenre LIKE '%" + strbtSearch + "%'";
-                }
-                else
-                {
-                    strSearchGenre = "genre LIKE '' OR subgenre LIKE ''";
-                }
-                if(chbSerie.Checked == true)
-                {
-                    strSearchSerie = "serie LIKE '%" + strbtSearch + "%'";
-                }
-                else
-                {
-                    strSearchSerie = "serie LIKE ''";
-                }
-
-                RemoveGames(iCoverIndex, iCoverID);
-                //bSearchInProgress = false;
-                //suppression du son d'alerte windows
-                e.Handled = true;
-                e.SuppressKeyPress = true;               
-            }
-        }
         private void bigCoverTitle_Click(object sender, System.EventArgs e)
         {
           
@@ -1417,14 +1099,13 @@ namespace MyDatabase
         {
             //if (MessageBox.Show("Etes-vous certain de vouloir quitter ?", "Quitter", MessageBoxButtons.YesNo) == DialogResult.No)
             //    e.Cancel = true;
-            if (bSearchMode == false)
-            {
-                Settings.Default.Platform_Index = iHardwareSelected;
-                Settings.Default.Platform_Name = cbPlatformList.Text;
-                Settings.Default.Game_Index = iSelectedCoverIndex;
-                Settings.Default.Save();
-                Settings.Default.Reload();
-            }
+
+            Settings.Default.Platform_Index = iHardwareSelected;
+            Settings.Default.Platform_Name = cbPlatformList.Text;
+            Settings.Default.Game_Index = iSelectedCoverIndex; 
+            Settings.Default.Save();
+            Settings.Default.Reload();
+
 
         }
         //Resize is always called when ResizeEnd is called, so add a flag to detect end of resize
@@ -1617,27 +1298,7 @@ namespace MyDatabase
             //max.X = (int)(diffx + imgs.Width);
             //max.Y = (int)(iMargeYPictureBoxImage + imgs.Height);
         }
-
-        void ToolTip_Popup(object sender, PopupEventArgs e)
-        {
-            var info = (ToolTip)sender;
-            //string test;
-            //test = (string)info.Tag;
-            // on popup set the size of tool tip
-            e.ToolTipSize = TextRenderer.MeasureText((string)info.Tag, new Font("Ubuntu", 8, FontStyle.Regular));
-        }
-
-        void ToolTip_Draw(object sender, DrawToolTipEventArgs e)
-        {
-            var info = (ToolTip)sender;
-            Font f = new Font("Ubuntu", 8, FontStyle.Regular);
-            e.DrawBackground();
-            e.Graphics.DrawString((string)info.Tag, f, Brushes.Black, new PointF(2, 2));
-           
-        }
-
-
-
+        
         //create missing cover
         public static Bitmap CreateImage(Image image, int width, int height, string name)
         {
